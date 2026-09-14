@@ -1,0 +1,136 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none"
+     xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Connectome Behavior Simulator -->
+  <!-- Minimal Drosophila + organic neural pathways -->
+
+  <defs>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8"
+                    flood-color="#000000" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <!-- Left wing -->
+  <path
+    d="M238 205
+       C207 164 156 133 105 148
+       C67 159 53 192 77 218
+       C105 248 165 257 228 239
+       C241 235 246 221 238 205Z"
+    fill="#F3DDE4"
+    stroke="#D89AAA"
+    stroke-width="5"
+    stroke-linejoin="round"/>
+
+  <!-- Right wing -->
+  <path
+    d="M274 205
+       C305 164 356 133 407 148
+       C445 159 459 192 435 218
+       C407 248 347 257 284 239
+       C271 235 266 221 274 205Z"
+    fill="#F3DDE4"
+    stroke="#D89AAA"
+    stroke-width="5"
+    stroke-linejoin="round"/>
+
+  <!-- Subtle wing veins -->
+  <path
+    d="M224 218 C183 202 145 188 102 181
+       M229 225 C184 222 143 218 103 207
+       M288 218 C329 202 367 188 410 181
+       M283 225 C328 222 369 218 409 207"
+    stroke="#E5B7C3"
+    stroke-width="4"
+    stroke-linecap="round"
+    opacity="0.75"/>
+
+  <!-- Main fly body -->
+  <path
+    d="M256 126
+       C224 126 202 153 203 188
+       C204 207 214 222 225 236
+       C211 260 207 295 216 328
+       C224 360 238 387 256 407
+       C274 387 288 360 296 328
+       C305 295 301 260 287 236
+       C298 222 308 207 309 188
+       C310 153 288 126 256 126Z"
+    fill="#FFFDF9"
+    stroke="#C9B8BC"
+    stroke-width="6"
+    stroke-linejoin="round"
+    filter="url(#softShadow)"/>
+
+  <!-- Head -->
+  <ellipse
+    cx="256"
+    cy="168"
+    rx="46"
+    ry="42"
+    fill="#FFFDF9"
+    stroke="#C9B8BC"
+    stroke-width="6"/>
+
+  <!-- Antennae -->
+  <path
+    d="M230 139 C213 119 199 111 182 108
+       M282 139 C299 119 313 111 330 108"
+    stroke="#C9B8BC"
+    stroke-width="5"
+    stroke-linecap="round"/>
+
+  <circle cx="181" cy="107" r="5" fill="#D89AAA"/>
+  <circle cx="331" cy="107" r="5" fill="#D89AAA"/>
+
+  <!-- Eyes -->
+  <ellipse cx="229" cy="168" rx="13" ry="17" fill="#E8B8C4"/>
+  <ellipse cx="283" cy="168" rx="13" ry="17" fill="#E8B8C4"/>
+
+  <!-- Organic neural pathway -->
+  <g
+    stroke="#C96F86"
+    stroke-width="5"
+    stroke-linecap="round"
+    stroke-linejoin="round">
+
+    <!-- visual input -->
+    <path d="M229 168 C240 179 246 188 256 197"/>
+
+    <path d="M283 168 C272 179 266 188 256 197"/>
+
+    <!-- central integration -->
+    <path d="M256 197 C238 214 232 231 240 250"/>
+    <path d="M256 197 C274 214 280 231 272 250"/>
+
+    <!-- descending pathways -->
+    <path d="M240 250 C249 266 251 280 246 297"/>
+    <path d="M272 250 C263 266 261 280 266 297"/>
+
+    <path d="M246 297 C239 313 238 329 244 345"/>
+    <path d="M266 297 C273 313 274 329 268 345"/>
+
+    <!-- central output -->
+    <path d="M244 345 C249 356 252 365 256 377"/>
+    <path d="M268 345 C263 356 260 365 256 377"/>
+  </g>
+
+  <!-- Neural nodes -->
+  <g fill="#C96F86">
+    <circle cx="229" cy="168" r="7"/>
+    <circle cx="283" cy="168" r="7"/>
+    <circle cx="256" cy="197" r="8"/>
+    <circle cx="240" cy="250" r="7"/>
+    <circle cx="272" cy="250" r="7"/>
+    <circle cx="246" cy="297" r="7"/>
+    <circle cx="266" cy="297" r="7"/>
+    <circle cx="244" cy="345" r="6"/>
+    <circle cx="268" cy="345" r="6"/>
+    <circle cx="256" cy="377" r="7"/>
+  </g>
+
+  <!-- Tiny central highlight -->
+  <circle cx="256" cy="197" r="3" fill="#FFFDF9"/>
+
+</svg>
