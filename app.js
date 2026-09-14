@@ -427,74 +427,59 @@ class World {
 }
 
     visualFeatures(mode) {
+    const food = this.foodSignal();
+    const obstacle = this.obstacleSignal();
 
-        const food =
-            this.foodSignal();
+    const foodWeight = {
+        food: 1.0,
+        obstacle: 0.2,
+        competing: 1.0,
+        maze: 0.8
+    }[mode] ?? 1.0;
 
-        const obstacle =
-            this.obstacleSignal();
+    const obstacleWeight = {
+        food: 0.7,
+        obstacle: 1.2,
+        competing: 1.0,
+        maze: 1.4
+    }[mode] ?? 1.0;
 
-        const foodWeight = {
-            food: 1.0,
-            obstacle: 0.2,
-            competing: 1.0,
-            maze: 0.8
-        }[mode] ?? 1.0;
+    // Food direction relative to the fly:
+    // left  = negative angle
+    // center = angle near 0
+    // right = positive angle
+    const foodLeft =
+        food.strength *
+        Math.max(0, -Math.sin(food.error));
 
-        const obstacleWeight = {
-            food: 0.7,
-            obstacle: 1.2,
-            competing: 1.0,
-            maze: 1.4
-        }[mode] ?? 1.0;
+    const foodRight =
+        food.strength *
+        Math.max(0, Math.sin(food.error));
 
-        const foodLeft =
-            food.strength *
-            Math.max(
-                0,
-                -food.error / Math.PI
-            );
+    const foodCenter =
+        food.strength *
+        Math.max(0, Math.cos(food.error));
 
-        const foodRight =
-            food.strength *
-            Math.max(
-                0,
-                food.error / Math.PI
-            );
+    return {
+        leftFood:
+            Math.min(1, foodLeft * foodWeight),
 
-        return {
-            leftFood:
-                Math.min(
-                    1,
-                    foodLeft * foodWeight
-                ),
+        rightFood:
+            Math.min(1, foodRight * foodWeight),
 
-            rightFood:
-                Math.min(
-                    1,
-                    foodRight * foodWeight
-                ),
+        centerFood:
+            Math.min(1, foodCenter * foodWeight),
 
-            obstacleLeft:
-                Math.min(
-                    1,
-                    obstacle.left * obstacleWeight
-                ),
+        obstacleLeft:
+            Math.min(1, obstacle.left * obstacleWeight),
 
-            obstacleRight:
-                Math.min(
-                    1,
-                    obstacle.right * obstacleWeight
-                ),
+        obstacleRight:
+            Math.min(1, obstacle.right * obstacleWeight),
 
-            obstacleFront:
-                Math.min(
-                    1,
-                    obstacle.front * obstacleWeight
-                )
-        };
-    }
-
+        obstacleFront:
+            Math.min(1, obstacle.front * obstacleWeight)
+    };
+}
     move(motor) {
 
         const oldX = this.fly.x;
@@ -936,8 +921,13 @@ function encodeVisualInput(features) {
         LPT54: features.rightFood,
         LT87: features.rightFood * 0.9,
 
+        // Centered food signal keeps food directly ahead visible
+        // to the visual input layer.
         LPT48_vCal3:
-            (features.leftFood + features.rightFood) / 2,
+            Math.max(
+                features.centerFood,
+                (features.leftFood + features.rightFood) / 2
+            ),
 
         VST2:
             Math.max(
