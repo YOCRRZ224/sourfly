@@ -1,0 +1,351 @@
+:root {
+    --bg: #080a0d;
+    --panel: #0d1014;
+    --panel-2: #11151a;
+    --border: #20262d;
+    --text: #e7edf2;
+    --muted: #7f8a94;
+    --accent: #5bc0ff;
+    --danger: #ff6868;
+    --success: #70d6a0;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+header {
+    height: 76px;
+    padding: 0 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+h1 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+}
+
+header p {
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.status {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    font-size: 11px;
+    color: var(--muted);
+}
+
+#statusDot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--success);
+}
+
+main {
+    padding: 20px 24px;
+    max-width: 1500px;
+    margin: auto;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    margin-bottom: 16px;
+}
+
+.mode-group,
+.controls {
+    display: flex;
+    gap: 6px;
+}
+
+button {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 9px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+button:hover {
+    border-color: #35404a;
+    color: var(--text);
+}
+
+button.active {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: #0b151d;
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 370px;
+    gap: 16px;
+}
+
+.panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.world-panel {
+    min-height: 650px;
+}
+
+.panel-header {
+    height: 42px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+}
+
+#world {
+    display: block;
+    width: 100%;
+    height: 560px;
+    background:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+}
+
+.world-info {
+    height: 48px;
+    display: flex;
+    border-top: 1px solid var(--border);
+}
+
+.world-info > div {
+    flex: 1;
+    padding: 8px 14px;
+    border-right: 1px solid var(--border);
+}
+
+.world-info span,
+.metrics span {
+    display: block;
+    color: var(--muted);
+    font-size: 9px;
+    letter-spacing: .08em;
+}
+
+.world-info strong {
+    display: block;
+    margin-top: 3px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.side {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.neural-section {
+    padding: 12px 14px;
+}
+
+.neural-section + .neural-section {
+    border-top: 1px solid var(--border);
+}
+
+h3 {
+    margin: 0 0 9px;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: .08em;
+    font-weight: 500;
+}
+
+.neuron {
+    margin-bottom: 8px;
+}
+
+.neuron-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: 10px;
+}
+
+.neuron-name {
+    color: #bbc5ce;
+}
+
+.neuron-value {
+    color: var(--muted);
+    font-family: monospace;
+}
+
+.bar {
+    height: 4px;
+    background: #181d23;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    transition: width .08s linear;
+}
+
+.metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.metrics > div {
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.metrics > div:nth-child(odd) {
+    border-right: 1px solid var(--border);
+}
+
+.metrics strong {
+    display: block;
+    margin-top: 4px;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.lesion-panel {
+    padding-bottom: 12px;
+}
+
+.description {
+    padding: 0 14px;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+#lesionList {
+    padding: 0 14px;
+}
+
+.lesion-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-top: 1px solid var(--border);
+    font-family: monospace;
+    font-size: 11px;
+}
+
+.lesion-item input {
+    accent-color: var(--danger);
+}
+
+.switch {
+    position: relative;
+    width: 28px;
+    height: 16px;
+}
+
+.switch input {
+    display: none;
+}
+
+.switch span {
+    position: absolute;
+    inset: 0;
+    background: #20262d;
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+.switch span::after {
+    content: "";
+    width: 10px;
+    height: 10px;
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    border-radius: 50%;
+    background: #69747e;
+    transition: .15s;
+}
+
+.switch input:checked + span {
+    background: #332020;
+}
+
+.switch input:checked + span::after {
+    transform: translateX(12px);
+    background: var(--danger);
+}
+
+footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15px;
+    color: #555f68;
+    font-size: 9px;
+}
+
+@media (max-width: 1000px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+
+    .toolbar {
+        flex-direction: column;
+    }
+
+    .side {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 650px) {
+    main {
+        padding: 12px;
+    }
+
+    header {
+        padding: 0 15px;
+    }
+
+    .mode-group {
+        flex-wrap: wrap;
+    }
+
+    .side {
+        display: flex;
+    }
+}

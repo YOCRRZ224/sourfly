@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connectome Behavior Simulator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>Connectome Behavior Simulator</h1>
+        <p>Interactive Drosophila behavioral simulation</p>
+    </div>
+
+    <div class="status">
+        <span id="statusDot"></span>
+        <span id="statusText">READY</span>
+    </div>
+</header>
+
+<main>
+
+    <section class="toolbar">
+        <div class="mode-group">
+            <button class="mode active" data-mode="food">Food Seeking</button>
+            <button class="mode" data-mode="obstacle">Obstacle Avoidance</button>
+            <button class="mode" data-mode="competing">Competing Stimuli</button>
+            <button class="mode" data-mode="maze">Maze</button>
+        </div>
+
+        <div class="controls">
+            <button id="pauseBtn">Pause</button>
+            <button id="resetBtn">Reset</button>
+        </div>
+    </section>
+
+    <section class="layout">
+
+        <div class="world-panel panel">
+            <div class="panel-header">
+                <span>SIMULATION WORLD</span>
+                <span id="modeLabel">FOOD SEEKING</span>
+            </div>
+
+            <canvas id="world"></canvas>
+
+            <div class="world-info">
+                <div>
+                    <span>POSITION</span>
+                    <strong id="position">0, 0</strong>
+                </div>
+
+                <div>
+                    <span>ACTION</span>
+                    <strong id="action">IDLE</strong>
+                </div>
+
+                <div>
+                    <span>TIME</span>
+                    <strong id="simTime">0.0s</strong>
+                </div>
+            </div>
+        </div>
+
+        <aside class="side">
+
+            <section class="panel">
+                <div class="panel-header">
+                    <span>NEURAL ACTIVITY</span>
+                    <span id="networkState">ACTIVE</span>
+                </div>
+
+                <div class="neural-section">
+                    <h3>VISUAL PROJECTION</h3>
+                    <div id="visualActivity"></div>
+                </div>
+
+                <div class="neural-section">
+                    <h3>CENTRAL</h3>
+                    <div id="centralActivity"></div>
+                </div>
+
+                <div class="neural-section">
+                    <h3>DESCENDING</h3>
+                    <div id="descendingActivity"></div>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel-header">
+                    <span>EXPERIMENT</span>
+                </div>
+
+                <div class="metrics">
+                    <div>
+                        <span>FOOD REACHED</span>
+                        <strong id="foodReached">0</strong>
+                    </div>
+
+                    <div>
+                        <span>COLLISIONS</span>
+                        <strong id="collisions">0</strong>
+                    </div>
+
+                    <div>
+                        <span>DISTANCE</span>
+                        <strong id="distance">0.0</strong>
+                    </div>
+
+                    <div>
+                        <span>SUCCESS</span>
+                        <strong id="success">NO</strong>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel lesion-panel">
+                <div class="panel-header">
+                    <span>LESION MODE</span>
+
+                    <label class="switch">
+                        <input type="checkbox" id="lesionToggle">
+                        <span></span>
+                    </label>
+                </div>
+
+                <p class="description">
+                    Disable modeled central components and observe how the
+                    computational behavior changes.
+                </p>
+
+                <div id="lesionList"></div>
+            </section>
+
+        </aside>
+
+    </section>
+
+    <footer>
+        <span>FAFB v783 connectome-informed model</span>
+        <span>Computational simulation — not a biological causal claim</span>
+    </footer>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

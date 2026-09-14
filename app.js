@@ -1,0 +1,1247 @@
+const canvas = document.getElementById("world");
+const ctx = canvas.getContext("2d");
+
+const modeButtons = document.querySelectorAll(".mode");
+const pauseBtn = document.getElementById("pauseBtn");
+const resetBtn = document.getElementById("resetBtn");
+const lesionToggle = document.getElementById("lesionToggle");
+
+const modeLabel = document.getElementById("modeLabel");
+const actionLabel = document.getElementById("action");
+const positionLabel = document.getElementById("position");
+const simTimeLabel = document.getElementById("simTime");
+
+const foodReachedLabel = document.getElementById("foodReached");
+const collisionsLabel = document.getElementById("collisions");
+const distanceLabel = document.getElementById("distance");
+const successLabel = document.getElementById("success");
+
+const statusText = document.getElementById("statusText");
+const networkState = document.getElementById("networkState");
+
+const VISUAL = [
+    "LTe42b",
+    "LTe15",
+    "LPT54",
+    "LT87",
+    "LPT48_vCal3",
+    "VST2",
+    "LPLC4"
+];
+
+const CENTRAL = [
+    "CB0524",
+    "SAD043",
+    "LHAD1g1",
+    "AVLP340",
+    "CB0500",
+    "AVLP435a",
+    "Nod1",
+    "CB0268",
+    "CB0316",
+    "PVLP020",
+    "PS213",
+    "LTe42a",
+    "PLP213",
+    "CB0492",
+    "PS174",
+    "PS098",
+    "PLP248"
+];
+
+const DESCENDING = [
+    "DNae005",
+    "DNbe007",
+    "DNge054",
+    "DNp103",
+    "DNp06",
+    "DNp55",
+    "DNb06",
+    "DNp56",
+    "DNp26",
+    "DNg41",
+    "DNp09",
+    "DNa10",
+    "DNp57",
+    "DNg46"
+];
+
+const PATHWAYS = [
+    ["LTe42b", "CB0524", "DNae005", 391, 130],
+    ["LTe42b", "CB0524", "DNbe007", 391, 101],
+
+    ["LTe15", "SAD043", "DNbe007", 360, 115],
+    ["LTe15", "SAD043", "DNge054", 360, 40],
+
+    ["LPT54", "SAD043", "DNge054", 266, 152],
+    ["LPT54", "SAD043", "DNbe007", 266, 102],
+
+    ["LT87", "LHAD1g1", "DNp103", 259, 121],
+    ["LT87", "LHAD1g1", "DNp06", 259, 120],
+
+    ["LT87", "AVLP340", "DNp55", 174, 175],
+
+    ["LPT48_vCal3", "CB0500", "DNb06", 47, 542],
+    ["VST2", "CB0500", "DNb06", 42, 542],
+
+    ["LT1d", "AVLP435a", "DNp103", 330, 68],
+
+    ["LPT22", "Nod1", "DNp26", 395, 55],
+
+    ["LPT04_HST", "CB0268", "DNg41", 228, 87],
+
+    ["LT86", "CB0316", "DNbe007", 153, 124],
+
+    ["LPT51", "SAD043", "DNge054", 120, 152],
+
+    ["LT82a", "PVLP020", "DNp09", 92, 191],
+
+    ["VSm", "PS213", "DNb06", 104, 168],
+
+    ["LTe17", "LTe42a", "DNp56", 132, 128],
+
+    ["LTe07", "PLP213", "DNa10", 76, 207],
+
+    ["LTe42a", "CB0492", "DNbe007", 195, 80],
+
+    ["LPLC4", "PLP213", "DNa10", 75, 207],
+
+    ["VST2", "PS174", "DNg46", 84, 176],
+
+    ["aMe25", "PS098", "DNp57", 118, 125],
+
+    ["vCal1", "PLP248", "DNa10", 189, 78]
+];
+
+const visualToCentral = {};
+const centralToDescending = {};
+
+for (const [v, c, d, w1, w2] of PATHWAYS) {
+    if (!visualToCentral[v]) visualToCentral[v] = [];
+    if (!centralToDescending[c]) centralToDescending[c] = [];
+
+    visualToCentral[v].push([c, w1]);
+    centralToDescending[c].push([d, w2]);
+}
+
+for (const v in visualToCentral) {
+    const max = Math.max(...visualToCentral[v].map(x => x[1]));
+
+    visualToCentral[v] = visualToCentral[v].map(
+        ([n, w]) => [n, w / max]
+    );
+}
+
+for (const c in centralToDescending) {
+    const max = Math.max(...centralToDescending[c].map(x => x[1]));
+
+    centralToDescending[c] = centralToDescending[c].map(
+        ([n, w]) => [n, w / max]
+    );
+}
+
+class NeuralCircuit {
+
+    constructor() {
+        this.visual = Object.fromEntries(VISUAL.map(n => [n, 0]));
+        this.central = Object.fromEntries(CENTRAL.map(n => [n, 0]));
+        this.descending = Object.fromEntries(DESCENDING.map(n => [n, 0]));
+
+        this.tau = 0.72;
+        this.gain = 1.4;
+
+        this.lesions = new Set();
+    }
+
+    reset() {
+        for (const n of VISUAL) this.visual[n] = 0;
+        for (const n of CENTRAL) this.central[n] = 0;
+        for (const n of DESCENDING) this.descending[n] = 0;
+    }
+
+    step(input) {
+
+        for (const n of VISUAL) {
+
+            const target = input[n] || 0;
+
+            this.visual[n] +=
+                (target - this.visual[n]) *
+                (1 - this.tau);
+        }
+
+        const centralDrive =
+            Object.fromEntries(CENTRAL.map(n => [n, 0]));
+
+        for (const v of VISUAL) {
+
+            const activity = this.visual[v];
+
+            if (!visualToCentral[v]) continue;
+
+            for (const [c, weight] of visualToCentral[v]) {
+
+                if (this.lesions.has(c)) continue;
+
+                centralDrive[c] += activity * weight;
+            }
+        }
+
+        for (const c of CENTRAL) {
+
+            if (this.lesions.has(c)) {
+                this.central[c] = 0;
+                continue;
+            }
+
+            const target =
+                Math.tanh(
+                    centralDrive[c] * this.gain
+                );
+
+            this.central[c] +=
+                (target - this.central[c]) *
+                (1 - this.tau);
+        }
+
+        const descendingDrive =
+            Object.fromEntries(DESCENDING.map(n => [n, 0]));
+
+        for (const c of CENTRAL) {
+
+            if (this.lesions.has(c)) continue;
+
+            const activity = this.central[c];
+
+            if (!centralToDescending[c]) continue;
+
+            for (const [d, weight] of centralToDescending[c]) {
+
+                descendingDrive[d] +=
+                    activity * weight;
+            }
+        }
+
+        for (const d of DESCENDING) {
+
+            const target =
+                Math.tanh(
+                    descendingDrive[d] * this.gain
+                );
+
+            this.descending[d] +=
+                (target - this.descending[d]) *
+                (1 - this.tau);
+        }
+
+        return this.descending;
+    }
+}
+class World {
+
+    constructor() {
+        this.width = 100;
+        this.height = 70;
+        this.reset();
+    }
+
+    reset() {
+        this.fly = {
+            x: 10,
+            y: 35,
+            angle: 0
+        };
+
+        this.food = [
+            { x: 85, y: 20 },
+            { x: 80, y: 55 }
+        ];
+
+        this.obstacles = [
+            { x: 38, y: 15, w: 8, h: 35 },
+            { x: 60, y: 43, w: 22, h: 7 },
+            { x: 62, y: 8, w: 7, h: 20 }
+        ];
+
+        this.collisions = 0;
+        this.foodReached = 0;
+        this.distance = 0;
+    }
+
+    nearestFood() {
+        if (!this.food.length) return null;
+
+        return this.food.reduce((best, food) => {
+
+            const a = this.distanceBetween(
+                this.fly.x,
+                this.fly.y,
+                best.x,
+                best.y
+            );
+
+            const b = this.distanceBetween(
+                this.fly.x,
+                this.fly.y,
+                food.x,
+                food.y
+            );
+
+            return b < a ? food : best;
+        });
+    }
+
+    distanceBetween(x1, y1, x2, y2) {
+        return Math.hypot(
+            x2 - x1,
+            y2 - y1
+        );
+    }
+
+    foodSignal() {
+        const food = this.nearestFood();
+
+        if (!food) {
+            return {
+                strength: 0,
+                error: 0
+            };
+        }
+
+        const dx =
+            food.x - this.fly.x;
+
+        const dy =
+            food.y - this.fly.y;
+
+        const distance =
+            Math.hypot(dx, dy);
+
+        const direction =
+            Math.atan2(dy, dx);
+
+        const error =
+            Math.atan2(
+                Math.sin(
+                    direction - this.fly.angle
+                ),
+                Math.cos(
+                    direction - this.fly.angle
+                )
+            );
+
+        return {
+            strength:
+                Math.exp(-distance / 35),
+
+            error
+        };
+    }
+
+    obstacleSignal() {
+
+    const rays = [
+        { angle: -0.65, weight: 0.55 },
+        { angle: -0.35, weight: 0.85 },
+        { angle: 0,     weight: 1.0 },
+        { angle: 0.35,  weight: 0.85 },
+        { angle: 0.65,  weight: 0.55 }
+    ];
+
+    const maxDistance = 16;
+
+    let left = 0;
+    let right = 0;
+    let front = 0;
+
+    for (const ray of rays) {
+
+        let strength = 0;
+
+        for (
+            let d = 1;
+            d <= maxDistance;
+            d += 1
+        ) {
+
+            const x =
+                this.fly.x +
+                Math.cos(
+                    this.fly.angle + ray.angle
+                ) * d;
+
+            const y =
+                this.fly.y +
+                Math.sin(
+                    this.fly.angle + ray.angle
+                ) * d;
+
+            // Existing obstacles
+            const hitObstacle =
+                this.obstacles.some(obstacle =>
+                    x >= obstacle.x &&
+                    x <= obstacle.x + obstacle.w &&
+                    y >= obstacle.y &&
+                    y <= obstacle.y + obstacle.h
+                );
+
+            // Canvas border
+            const hitBorder =
+                x <= 2 ||
+                x >= this.width - 2 ||
+                y <= 2 ||
+                y >= this.height - 2;
+
+            if (hitObstacle || hitBorder) {
+
+                strength =
+                    (1 - d / maxDistance) *
+                    ray.weight;
+
+                break;
+            }
+        }
+
+        if (ray.angle < -0.1) {
+
+            left =
+                Math.max(left, strength);
+
+        } else if (ray.angle > 0.1) {
+
+            right =
+                Math.max(right, strength);
+
+        } else {
+
+            front =
+                Math.max(front, strength);
+        }
+    }
+
+    return {
+        left,
+        right,
+        front
+    };
+}
+
+    visualFeatures(mode) {
+
+        const food =
+            this.foodSignal();
+
+        const obstacle =
+            this.obstacleSignal();
+
+        const foodWeight = {
+            food: 1.0,
+            obstacle: 0.2,
+            competing: 1.0,
+            maze: 0.8
+        }[mode] ?? 1.0;
+
+        const obstacleWeight = {
+            food: 0.7,
+            obstacle: 1.2,
+            competing: 1.0,
+            maze: 1.4
+        }[mode] ?? 1.0;
+
+        const foodLeft =
+            food.strength *
+            Math.max(
+                0,
+                -food.error / Math.PI
+            );
+
+        const foodRight =
+            food.strength *
+            Math.max(
+                0,
+                food.error / Math.PI
+            );
+
+        return {
+            leftFood:
+                Math.min(
+                    1,
+                    foodLeft * foodWeight
+                ),
+
+            rightFood:
+                Math.min(
+                    1,
+                    foodRight * foodWeight
+                ),
+
+            obstacleLeft:
+                Math.min(
+                    1,
+                    obstacle.left * obstacleWeight
+                ),
+
+            obstacleRight:
+                Math.min(
+                    1,
+                    obstacle.right * obstacleWeight
+                ),
+
+            obstacleFront:
+                Math.min(
+                    1,
+                    obstacle.front * obstacleWeight
+                )
+        };
+    }
+
+    move(motor) {
+
+        const oldX = this.fly.x;
+        const oldY = this.fly.y;
+
+        const maxTurn = 0.16;
+        const maxSpeed = 0.62;
+
+        const turn =
+            Math.max(
+                -1,
+                Math.min(
+                    1,
+                    motor.turn
+                )
+            );
+
+        const speed =
+            Math.max(
+                0,
+                Math.min(
+                    1,
+                    motor.speed
+                )
+            );
+
+        // Continuous steering
+        this.fly.angle +=
+            turn * maxTurn;
+
+        // Continuous forward movement
+        this.fly.x +=
+            Math.cos(this.fly.angle) *
+            maxSpeed *
+            speed;
+
+        this.fly.y +=
+            Math.sin(this.fly.angle) *
+            maxSpeed *
+            speed;
+
+        // Keep the fly inside the world
+        this.fly.x =
+            Math.max(
+                2,
+                Math.min(
+                    this.width - 2,
+                    this.fly.x
+                )
+            );
+
+        this.fly.y =
+            Math.max(
+                2,
+                Math.min(
+                    this.height - 2,
+                    this.fly.y
+                )
+            );
+
+        this.distance +=
+            Math.hypot(
+                this.fly.x - oldX,
+                this.fly.y - oldY
+            );
+
+        this.checkCollisions();
+        this.checkFood();
+    }
+
+    checkCollisions() {
+
+    const r = 1.5;
+
+    // Normal obstacles
+    for (const obstacle of this.obstacles) {
+
+        if (
+            this.fly.x + r > obstacle.x &&
+            this.fly.x - r <
+                obstacle.x + obstacle.w &&
+            this.fly.y + r > obstacle.y &&
+            this.fly.y - r <
+                obstacle.y + obstacle.h
+        ) {
+
+            this.collisions++;
+
+            this.fly.x -=
+                Math.cos(
+                    this.fly.angle
+                ) * 2;
+
+            this.fly.y -=
+                Math.sin(
+                    this.fly.angle
+                ) * 2;
+
+            const centerY =
+                obstacle.y +
+                obstacle.h / 2;
+
+            if (this.fly.y < centerY) {
+                this.fly.angle -= 0.45;
+            } else {
+                this.fly.angle += 0.45;
+            }
+
+            return;
+        }
+    }
+
+    // Canvas borders
+    const hitLeft =
+        this.fly.x - r <= 2;
+
+    const hitRight =
+        this.fly.x + r >= this.width - 2;
+
+    const hitTop =
+        this.fly.y - r <= 2;
+
+    const hitBottom =
+        this.fly.y + r >= this.height - 2;
+
+    if (
+        hitLeft ||
+        hitRight ||
+        hitTop ||
+        hitBottom
+    ) {
+
+        this.collisions++;
+
+        // Push the fly back inside
+        if (hitLeft) {
+            this.fly.x = 3;
+            this.fly.angle = 0;
+        }
+
+        if (hitRight) {
+            this.fly.x = this.width - 3;
+            this.fly.angle = Math.PI;
+        }
+
+        if (hitTop) {
+            this.fly.y = 3;
+            this.fly.angle = Math.PI / 2;
+        }
+
+        if (hitBottom) {
+            this.fly.y = this.height - 3;
+            this.fly.angle = -Math.PI / 2;
+        }
+    }
+}
+    checkFood() {
+
+        for (
+            let i = this.food.length - 1;
+            i >= 0;
+            i--
+        ) {
+
+            const food =
+                this.food[i];
+
+            if (
+                this.distanceBetween(
+                    this.fly.x,
+                    this.fly.y,
+                    food.x,
+                    food.y
+                ) < 3
+            ) {
+
+                this.food.splice(i, 1);
+                this.foodReached++;
+            }
+        }
+    }
+}
+
+
+class BehaviorDecoder {
+
+    decode(descending) {
+
+        const left =
+            descending.DNp103 +
+            descending.DNp06 +
+            descending.DNp55;
+
+        const right =
+            descending.DNb06 +
+            descending.DNp56 +
+            descending.DNp26;
+
+        const forward =
+            descending.DNae005 +
+            descending.DNbe007;
+
+        const stop =
+            descending.DNge054 +
+            descending.DNa10;
+
+        const total =
+            left +
+            right +
+            forward +
+            stop;
+
+        if (total < 0.01) {
+
+            return {
+                turn: 0,
+                speed: 0.15,
+                action: "forward",
+
+                values: {
+                    left,
+                    right,
+                    forward,
+                    stop
+                }
+            };
+        }
+
+        // Continuous steering
+        // Positive = right
+        // Negative = left
+        const turn =
+            Math.max(
+                -1,
+                Math.min(
+                    1,
+                    (right - left) /
+                    Math.max(
+                        0.5,
+                        left + right
+                    )
+                )
+            );
+
+        // Reduce forward drive
+        // when stop dominates
+        const forwardDrive =
+            Math.max(
+                0,
+                forward - stop * 0.7
+            );
+
+        const speed =
+            Math.max(
+                0.05,
+                Math.min(
+                    1,
+                    forwardDrive
+                )
+            );
+
+        let action = "forward";
+
+        if (Math.abs(turn) > 0.18) {
+
+            action =
+                turn < 0
+                    ? "turn_left"
+                    : "turn_right";
+        }
+
+        if (speed < 0.12) {
+            action = "stop";
+        }
+
+        return {
+            turn,
+            speed,
+            action,
+
+            values: {
+                left,
+                right,
+                forward,
+                stop
+            }
+        };
+    }
+}
+const circuit = new NeuralCircuit();
+const world = new World();
+const decoder = new BehaviorDecoder();
+
+let currentMode = "food";
+let paused = false;
+let elapsed = 0;
+
+function createActivityBars(containerId, neurons) {
+
+    const container =
+        document.getElementById(containerId);
+
+    container.innerHTML = "";
+
+    for (const neuron of neurons) {
+
+        const element =
+            document.createElement("div");
+
+        element.className = "neuron";
+
+        element.innerHTML = `
+            <div class="neuron-top">
+                <span class="neuron-name">${neuron}</span>
+                <span class="neuron-value" id="value-${neuron}">0.000</span>
+            </div>
+
+            <div class="bar">
+                <div class="bar-fill" id="bar-${neuron}"></div>
+            </div>
+        `;
+
+        container.appendChild(element);
+    }
+}
+
+createActivityBars("visualActivity", VISUAL);
+createActivityBars("centralActivity", CENTRAL);
+createActivityBars("descendingActivity", DESCENDING);
+
+function createLesionControls() {
+
+    const container =
+        document.getElementById("lesionList");
+
+    container.innerHTML = "";
+
+    const candidates = [
+        "CB0524",
+        "SAD043",
+        "LHAD1g1",
+        "CB0500",
+        "PLP213",
+        "CB0492"
+    ];
+
+    for (const neuron of candidates) {
+
+        const item =
+            document.createElement("label");
+
+        item.className = "lesion-item";
+
+        item.innerHTML = `
+            <span>${neuron}</span>
+            <input type="checkbox" data-lesion="${neuron}">
+        `;
+
+        container.appendChild(item);
+    }
+}
+
+createLesionControls();
+
+document.querySelectorAll("[data-lesion]").forEach(input => {
+
+    input.addEventListener("change", () => {
+
+        const neuron = input.dataset.lesion;
+
+        if (input.checked) {
+            circuit.lesions.add(neuron);
+        } else {
+            circuit.lesions.delete(neuron);
+        }
+
+        networkState.textContent =
+            circuit.lesions.size
+                ? `${circuit.lesions.size} LESION${circuit.lesions.size > 1 ? "S" : ""}`
+                : "ACTIVE";
+    });
+});
+
+lesionToggle.addEventListener("change", () => {
+
+    document.querySelectorAll("[data-lesion]")
+        .forEach(input => {
+            input.disabled = !lesionToggle.checked;
+        });
+
+    if (!lesionToggle.checked) {
+
+        circuit.lesions.clear();
+
+        document.querySelectorAll("[data-lesion]")
+            .forEach(input => {
+                input.checked = false;
+            });
+
+        networkState.textContent = "ACTIVE";
+    }
+});
+
+document.querySelectorAll("[data-lesion]")
+    .forEach(input => {
+        input.disabled = true;
+    });
+
+function updateActivityBars(group) {
+
+    for (const neuron of Object.keys(group)) {
+
+        const value =
+            Math.max(0, Math.min(1, group[neuron]));
+
+        const bar =
+            document.getElementById(`bar-${neuron}`);
+
+        const label =
+            document.getElementById(`value-${neuron}`);
+
+        if (bar) {
+            bar.style.width =
+                `${value * 100}%`;
+        }
+
+        if (label) {
+            label.textContent =
+                value.toFixed(3);
+        }
+    }
+}
+
+function encodeVisualInput(features) {
+    return {
+        LTe42b: features.leftFood,
+        LTe15: features.leftFood * 0.85,
+
+        LPT54: features.rightFood,
+        LT87: features.rightFood * 0.9,
+
+        LPT48_vCal3:
+            (features.leftFood + features.rightFood) / 2,
+
+        VST2:
+            Math.max(
+                features.obstacleLeft,
+                features.obstacleFront
+            ),
+
+        LPLC4:
+            Math.max(
+                features.obstacleRight,
+                features.obstacleFront
+            )
+    };
+}
+
+function updateMetrics(action) {
+
+    positionLabel.textContent =
+        `${world.fly.x.toFixed(1)}, ${world.fly.y.toFixed(1)}`;
+
+    actionLabel.textContent =
+        action.replace("_", " ").toUpperCase();
+
+    simTimeLabel.textContent =
+        `${elapsed.toFixed(1)}s`;
+
+    foodReachedLabel.textContent =
+        world.foodReached;
+
+    collisionsLabel.textContent =
+        world.collisions;
+
+    distanceLabel.textContent =
+        world.distance.toFixed(1);
+
+    const success =
+        world.food.length === 0;
+
+    successLabel.textContent =
+        success ? "YES" : "NO";
+}
+
+function updateSimulation() {
+
+    if (paused) return;
+
+    elapsed += 0.05;
+
+    const features =
+        world.visualFeatures(currentMode);
+
+    const input =
+        encodeVisualInput(features);
+
+    const descending =
+        circuit.step(input);
+
+    const result =
+    decoder.decode(descending);
+
+world.move(result);
+
+    updateActivityBars(circuit.visual);
+    updateActivityBars(circuit.central);
+    updateActivityBars(circuit.descending);
+
+    updateMetrics(result.action);
+}
+
+function resizeCanvas() {
+
+    const rect =
+        canvas.getBoundingClientRect();
+
+    const dpr =
+        window.devicePixelRatio || 1;
+
+    canvas.width =
+        rect.width * dpr;
+
+    canvas.height =
+        rect.height * dpr;
+
+    ctx.setTransform(
+        dpr,
+        0,
+        0,
+        dpr,
+        0,
+        0
+    );
+}
+
+function worldToScreen(x, y) {
+
+    return {
+        x: x / world.width * canvas.clientWidth,
+        y: y / world.height * canvas.clientHeight
+    };
+}
+
+function drawFly() {
+
+    const p =
+        worldToScreen(
+            world.fly.x,
+            world.fly.y
+        );
+
+    ctx.save();
+
+    ctx.translate(p.x, p.y);
+    ctx.rotate(world.fly.angle);
+
+    ctx.beginPath();
+    ctx.moveTo(11, 0);
+    ctx.lineTo(-7, -6);
+    ctx.lineTo(-5, 0);
+    ctx.lineTo(-7, 6);
+    ctx.closePath();
+
+    ctx.fillStyle = "#e7edf2";
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function drawFood() {
+
+    for (const food of world.food) {
+
+        const p =
+            worldToScreen(
+                food.x,
+                food.y
+            );
+
+        ctx.beginPath();
+        ctx.arc(
+            p.x,
+            p.y,
+            5,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle = "#70d6a0";
+        ctx.fill();
+    }
+}
+
+function drawObstacles() {
+
+    for (const obstacle of world.obstacles) {
+
+        const p =
+            worldToScreen(
+                obstacle.x,
+                obstacle.y
+            );
+
+        const p2 =
+            worldToScreen(
+                obstacle.x + obstacle.w,
+                obstacle.y + obstacle.h
+            );
+
+        ctx.fillStyle = "#1c2229";
+
+        ctx.fillRect(
+            p.x,
+            p.y,
+            p2.x - p.x,
+            p2.y - p.y
+        );
+
+        ctx.strokeStyle = "#343d46";
+        ctx.strokeRect(
+            p.x,
+            p.y,
+            p2.x - p.x,
+            p2.y - p.y
+        );
+    }
+}
+
+function drawSensorCone() {
+
+    const p =
+        worldToScreen(
+            world.fly.x,
+            world.fly.y
+        );
+
+    const length =
+        13 / world.width * canvas.clientWidth;
+
+    ctx.save();
+
+    ctx.translate(p.x, p.y);
+    ctx.rotate(world.fly.angle);
+
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(length, -length * 0.35);
+    ctx.lineTo(length, length * 0.35);
+    ctx.closePath();
+
+    ctx.strokeStyle =
+        "rgba(91,192,255,.25)";
+
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+function render() {
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.clientWidth,
+        canvas.clientHeight
+    );
+
+    drawObstacles();
+    drawFood();
+    drawSensorCone();
+    drawFly();
+
+    requestAnimationFrame(render);
+}
+
+function simulationLoop() {
+
+    updateSimulation();
+
+    setTimeout(
+        simulationLoop,
+        50
+    );
+}
+
+modeButtons.forEach(button => {
+
+    button.addEventListener("click", () => {
+
+        modeButtons.forEach(b =>
+            b.classList.remove("active")
+        );
+
+        button.classList.add("active");
+
+        currentMode =
+            button.dataset.mode;
+
+        modeLabel.textContent =
+            button.textContent.toUpperCase();
+
+        resetSimulation();
+    });
+});
+
+pauseBtn.addEventListener("click", () => {
+
+    paused = !paused;
+
+    pauseBtn.textContent =
+        paused ? "Resume" : "Pause";
+
+    statusText.textContent =
+        paused ? "PAUSED" : "RUNNING";
+});
+
+resetBtn.addEventListener(
+    "click",
+    resetSimulation
+);
+
+function resetSimulation() {
+
+    world.reset();
+    circuit.reset();
+
+    elapsed = 0;
+
+    paused = false;
+
+    pauseBtn.textContent = "Pause";
+    statusText.textContent = "RUNNING";
+
+    updateMetrics("idle");
+
+    updateActivityBars(circuit.visual);
+    updateActivityBars(circuit.central);
+    updateActivityBars(circuit.descending);
+}
+
+window.addEventListener(
+    "resize",
+    resizeCanvas
+);
+
+resizeCanvas();
+resetSimulation();
+render();
+simulationLoop();
