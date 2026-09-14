@@ -1,23 +1,35 @@
 const canvas = document.getElementById("world");
+
 const ctx = canvas.getContext("2d");
 
 const modeButtons = document.querySelectorAll(".mode");
+
 const pauseBtn = document.getElementById("pauseBtn");
+
 const resetBtn = document.getElementById("resetBtn");
+
 const lesionToggle = document.getElementById("lesionToggle");
 
 const modeLabel = document.getElementById("modeLabel");
+
 const actionLabel = document.getElementById("action");
+
 const positionLabel = document.getElementById("position");
+
 const simTimeLabel = document.getElementById("simTime");
 
 const foodReachedLabel = document.getElementById("foodReached");
+
 const collisionsLabel = document.getElementById("collisions");
+
 const distanceLabel = document.getElementById("distance");
+
 const successLabel = document.getElementById("success");
 
 const statusText = document.getElementById("statusText");
+
 const networkState = document.getElementById("networkState");
+
 
 const VISUAL = [
     "LTe42b",
@@ -28,6 +40,7 @@ const VISUAL = [
     "VST2",
     "LPLC4"
 ];
+
 
 const CENTRAL = [
     "CB0524",
@@ -49,6 +62,7 @@ const CENTRAL = [
     "PLP248"
 ];
 
+
 const DESCENDING = [
     "DNae005",
     "DNbe007",
@@ -66,137 +80,257 @@ const DESCENDING = [
     "DNg46"
 ];
 
+
 const PATHWAYS = [
     ["LTe42b", "CB0524", "DNae005", 391, 130],
     ["LTe42b", "CB0524", "DNbe007", 391, 101],
-
     ["LTe15", "SAD043", "DNbe007", 360, 115],
     ["LTe15", "SAD043", "DNge054", 360, 40],
-
     ["LPT54", "SAD043", "DNge054", 266, 152],
     ["LPT54", "SAD043", "DNbe007", 266, 102],
-
     ["LT87", "LHAD1g1", "DNp103", 259, 121],
     ["LT87", "LHAD1g1", "DNp06", 259, 120],
-
     ["LT87", "AVLP340", "DNp55", 174, 175],
-
     ["LPT48_vCal3", "CB0500", "DNb06", 47, 542],
     ["VST2", "CB0500", "DNb06", 42, 542],
-
     ["LT1d", "AVLP435a", "DNp103", 330, 68],
-
     ["LPT22", "Nod1", "DNp26", 395, 55],
-
     ["LPT04_HST", "CB0268", "DNg41", 228, 87],
-
     ["LT86", "CB0316", "DNbe007", 153, 124],
-
     ["LPT51", "SAD043", "DNge054", 120, 152],
-
     ["LT82a", "PVLP020", "DNp09", 92, 191],
-
     ["VSm", "PS213", "DNb06", 104, 168],
-
     ["LTe17", "LTe42a", "DNp56", 132, 128],
-
     ["LTe07", "PLP213", "DNa10", 76, 207],
-
     ["LTe42a", "CB0492", "DNbe007", 195, 80],
-
     ["LPLC4", "PLP213", "DNa10", 75, 207],
-
     ["VST2", "PS174", "DNg46", 84, 176],
-
     ["aMe25", "PS098", "DNp57", 118, 125],
-
     ["vCal1", "PLP248", "DNa10", 189, 78]
 ];
 
+
 const visualToCentral = {};
+
 const centralToDescending = {};
 
+
 for (const [v, c, d, w1, w2] of PATHWAYS) {
-    if (!visualToCentral[v]) visualToCentral[v] = [];
-    if (!centralToDescending[c]) centralToDescending[c] = [];
+
+    if (!visualToCentral[v]) {
+        visualToCentral[v] = [];
+    }
+
+    if (!centralToDescending[c]) {
+        centralToDescending[c] = [];
+    }
 
     visualToCentral[v].push([c, w1]);
+
     centralToDescending[c].push([d, w2]);
 }
 
+
 for (const v in visualToCentral) {
-    const max = Math.max(...visualToCentral[v].map(x => x[1]));
+
+    const max = Math.max(
+        ...visualToCentral[v].map(x => x[1])
+    );
 
     visualToCentral[v] = visualToCentral[v].map(
         ([n, w]) => [n, w / max]
     );
 }
 
+
 for (const c in centralToDescending) {
-    const max = Math.max(...centralToDescending[c].map(x => x[1]));
+
+    const max = Math.max(
+        ...centralToDescending[c].map(x => x[1])
+    );
 
     centralToDescending[c] = centralToDescending[c].map(
         ([n, w]) => [n, w / max]
     );
 }
 
+
+/*
+ * Seeded random number generator.
+ *
+ * Same seed = same sequence of random values.
+ * This lets us reproduce exactly the same environment.
+ */
+
+class SeededRandom {
+
+    constructor(seed) {
+        this.seed = this.hash(String(seed));
+    }
+
+    hash(str) {
+
+        let h = 2166136261;
+
+        for (let i = 0; i < str.length; i++) {
+
+            h ^= str.charCodeAt(i);
+
+            h = Math.imul(
+                h,
+                16777619
+            );
+        }
+
+        return h >>> 0;
+    }
+
+    next() {
+
+        this.seed += 0x6D2B79F5;
+
+        let t = this.seed;
+
+        t = Math.imul(
+            t ^ (t >>> 15),
+            t | 1
+        );
+
+        t ^= t + Math.imul(
+            t ^ (t >>> 7),
+            t | 61
+        );
+
+        return (
+            (t ^ (t >>> 14)) >>> 0
+        ) / 4294967296;
+    }
+
+    range(min, max) {
+
+        return (
+            min +
+            this.next() *
+            (max - min)
+        );
+    }
+
+    int(min, max) {
+
+        return Math.floor(
+            this.range(
+                min,
+                max + 1
+            )
+        );
+    }
+
+    chance(probability) {
+
+        return this.next() < probability;
+    }
+}
+
+
 class NeuralCircuit {
 
     constructor() {
-        this.visual = Object.fromEntries(VISUAL.map(n => [n, 0]));
-        this.central = Object.fromEntries(CENTRAL.map(n => [n, 0]));
-        this.descending = Object.fromEntries(DESCENDING.map(n => [n, 0]));
+
+        this.visual =
+            Object.fromEntries(
+                VISUAL.map(n => [n, 0])
+            );
+
+        this.central =
+            Object.fromEntries(
+                CENTRAL.map(n => [n, 0])
+            );
+
+        this.descending =
+            Object.fromEntries(
+                DESCENDING.map(n => [n, 0])
+            );
 
         this.tau = 0.72;
+
         this.gain = 1.4;
 
         this.lesions = new Set();
     }
 
+
     reset() {
-        for (const n of VISUAL) this.visual[n] = 0;
-        for (const n of CENTRAL) this.central[n] = 0;
-        for (const n of DESCENDING) this.descending[n] = 0;
+
+        for (const n of VISUAL) {
+            this.visual[n] = 0;
+        }
+
+        for (const n of CENTRAL) {
+            this.central[n] = 0;
+        }
+
+        for (const n of DESCENDING) {
+            this.descending[n] = 0;
+        }
     }
+
 
     step(input) {
 
         for (const n of VISUAL) {
 
-            const target = input[n] || 0;
+            const target =
+                input[n] || 0;
 
             this.visual[n] +=
                 (target - this.visual[n]) *
                 (1 - this.tau);
         }
 
+
         const centralDrive =
-            Object.fromEntries(CENTRAL.map(n => [n, 0]));
+            Object.fromEntries(
+                CENTRAL.map(n => [n, 0])
+            );
+
 
         for (const v of VISUAL) {
 
-            const activity = this.visual[v];
+            const activity =
+                this.visual[v];
 
-            if (!visualToCentral[v]) continue;
+            if (!visualToCentral[v]) {
+                continue;
+            }
 
-            for (const [c, weight] of visualToCentral[v]) {
+            for (
+                const [c, weight]
+                of visualToCentral[v]
+            ) {
 
-                if (this.lesions.has(c)) continue;
+                if (this.lesions.has(c)) {
+                    continue;
+                }
 
-                centralDrive[c] += activity * weight;
+                centralDrive[c] +=
+                    activity * weight;
             }
         }
+
 
         for (const c of CENTRAL) {
 
             if (this.lesions.has(c)) {
+
                 this.central[c] = 0;
+
                 continue;
             }
 
             const target =
                 Math.tanh(
-                    centralDrive[c] * this.gain
+                    centralDrive[c] *
+                    this.gain
                 );
 
             this.central[c] +=
@@ -204,29 +338,43 @@ class NeuralCircuit {
                 (1 - this.tau);
         }
 
+
         const descendingDrive =
-            Object.fromEntries(DESCENDING.map(n => [n, 0]));
+            Object.fromEntries(
+                DESCENDING.map(n => [n, 0])
+            );
+
 
         for (const c of CENTRAL) {
 
-            if (this.lesions.has(c)) continue;
+            if (this.lesions.has(c)) {
+                continue;
+            }
 
-            const activity = this.central[c];
+            const activity =
+                this.central[c];
 
-            if (!centralToDescending[c]) continue;
+            if (!centralToDescending[c]) {
+                continue;
+            }
 
-            for (const [d, weight] of centralToDescending[c]) {
+            for (
+                const [d, weight]
+                of centralToDescending[c]
+            ) {
 
                 descendingDrive[d] +=
                     activity * weight;
             }
         }
 
+
         for (const d of DESCENDING) {
 
             const target =
                 Math.tanh(
-                    descendingDrive[d] * this.gain
+                    descendingDrive[d] *
+                    this.gain
                 );
 
             this.descending[d] +=
@@ -234,259 +382,1179 @@ class NeuralCircuit {
                 (1 - this.tau);
         }
 
+
         return this.descending;
     }
 }
+
+
+/*
+ * World
+ *
+ * The fly does NOT know the generated map.
+ *
+ * The map only determines the physical environment.
+ * The fly receives local sensory information through
+ * foodSignal() and obstacleSignal().
+ */
+
 class World {
 
     constructor() {
+
         this.width = 100;
+
         this.height = 70;
-        this.reset();
+
+        this.seed = null;
+
+        this.rng = null;
+
+        this.reset(null, "food");
     }
 
-    reset() {
+
+    reset(seed = null, mode = "food") {
+
+        /*
+         * If no seed was supplied, generate a new one.
+         *
+         * This means every normal reset produces
+         * a different environment.
+         */
+
+        if (
+            seed === null ||
+            seed === undefined ||
+            String(seed).trim() === ""
+        ) {
+
+            seed =
+                Math.floor(
+                    Math.random() *
+                    1000000000
+                );
+        }
+
+
+        this.seed = String(seed);
+
+        this.rng =
+            new SeededRandom(this.seed);
+        this.mode = mode;
+
         this.fly = {
+
             x: 10,
+
             y: 35,
+
             angle: 0
         };
 
-        this.food = [
-            { x: 85, y: 20 },
-            { x: 80, y: 55 }
-        ];
 
-        this.obstacles = [
-            { x: 38, y: 15, w: 8, h: 35 },
-            { x: 60, y: 43, w: 22, h: 7 },
-            { x: 62, y: 8, w: 7, h: 20 }
-        ];
+        this.food = [];
+
+        this.obstacles = [];
+
 
         this.collisions = 0;
+
         this.foodReached = 0;
+
         this.distance = 0;
+
+
+        this.generateEnvironment();
     }
 
-    nearestFood() {
-        if (!this.food.length) return null;
 
-        return this.food.reduce((best, food) => {
+    generateEnvironment() {
 
-            const a = this.distanceBetween(
-                this.fly.x,
-                this.fly.y,
-                best.x,
-                best.y
+    if (this.mode === "maze") {
+
+        this.generateMaze();
+
+    } else {
+
+        this.generateRandomObstacles();
+    }
+
+    this.generateFood();
+}
+
+
+    generateRandomObstacles() {
+
+        const count =
+            this.rng.int(5, 10);
+
+
+        for (let i = 0; i < count; i++) {
+
+            let obstacle;
+
+            let attempts = 0;
+
+
+            do {
+
+                obstacle = {
+
+                    x:
+                        this.rng.range(
+                            25,
+                            82
+                        ),
+
+                    y:
+                        this.rng.range(
+                            7,
+                            57
+                        ),
+
+                    w:
+                        this.rng.range(
+                            5,
+                            14
+                        ),
+
+                    h:
+                        this.rng.range(
+                            5,
+                            16
+                        )
+                };
+
+
+                attempts++;
+
+            } while (
+
+                (
+                    this.overlapsStartArea(
+                        obstacle
+                    ) ||
+
+                    this.obstacleOverlapsExisting(
+                        obstacle
+                    )
+                ) &&
+
+                attempts < 60
             );
 
-            const b = this.distanceBetween(
-                this.fly.x,
-                this.fly.y,
-                food.x,
-                food.y
-            );
 
-            return b < a ? food : best;
+            if (
+                !this.overlapsStartArea(obstacle) &&
+                !this.obstacleOverlapsExisting(obstacle)
+            ) {
+
+                this.obstacles.push(obstacle);
+            }
+        }
+    }
+
+
+    obstacleOverlapsExisting(obstacle) {
+
+        const padding = 3;
+
+
+        return this.obstacles.some(existing => {
+
+            return (
+
+                obstacle.x <
+                    existing.x +
+                    existing.w +
+                    padding &&
+
+                obstacle.x +
+                    obstacle.w +
+                    padding >
+                    existing.x &&
+
+                obstacle.y <
+                    existing.y +
+                    existing.h +
+                    padding &&
+
+                obstacle.y +
+                    obstacle.h +
+                    padding >
+                    existing.y
+            );
         });
     }
 
-    distanceBetween(x1, y1, x2, y2) {
+
+    overlapsStartArea(obstacle) {
+
+        const start = {
+
+            x: 2,
+
+            y: 27,
+
+            w: 22,
+
+            h: 16
+        };
+
+
+        return (
+
+            obstacle.x <
+                start.x +
+                start.w &&
+
+            obstacle.x +
+                obstacle.w >
+                start.x &&
+
+            obstacle.y <
+                start.y +
+                start.h &&
+
+            obstacle.y +
+                obstacle.h >
+                start.y
+        );
+    }
+
+
+    /*
+     * Randomized maze.
+     *
+     * The maze is generated from the seed.
+     * The fly only sees nearby walls through
+     * obstacleSignal().
+     */
+
+    generateMaze() {
+
+        const cols = 10;
+
+        const rows = 7;
+
+        const cellW =
+            this.width / cols;
+
+        const cellH =
+            this.height / rows;
+
+
+        /*
+         * Start with a grid where every cell
+         * is considered closed.
+         */
+
+        const visited =
+            Array.from(
+                { length: rows },
+                () =>
+                    Array(cols).fill(false)
+            );
+
+
+        const walls =
+            Array.from(
+                { length: rows },
+                () =>
+                    Array.from(
+                        { length: cols },
+                        () => ({
+                            top: true,
+                            right: true,
+                            bottom: true,
+                            left: true
+                        })
+                    )
+            );
+
+
+        const stack = [];
+
+
+        /*
+         * Start near the fly.
+         */
+
+        const startCol = 0;
+
+        const startRow =
+            Math.floor(rows / 2);
+
+
+        visited[startRow][startCol] =
+            true;
+
+        stack.push([
+            startCol,
+            startRow
+        ]);
+
+
+        /*
+         * Randomized depth-first maze generation.
+         */
+
+        while (stack.length) {
+
+            const [
+                col,
+                row
+            ] =
+                stack[
+                    stack.length - 1
+                ];
+
+
+            const neighbors = [];
+
+
+            if (
+                row > 0 &&
+                !visited[row - 1][col]
+            ) {
+
+                neighbors.push({
+                    col,
+                    row: row - 1,
+                    direction: "top"
+                });
+            }
+
+
+            if (
+                col < cols - 1 &&
+                !visited[row][col + 1]
+            ) {
+
+                neighbors.push({
+                    col: col + 1,
+                    row,
+                    direction: "right"
+                });
+            }
+
+
+            if (
+                row < rows - 1 &&
+                !visited[row + 1][col]
+            ) {
+
+                neighbors.push({
+                    col,
+                    row: row + 1,
+                    direction: "bottom"
+                });
+            }
+
+
+            if (
+                col > 0 &&
+                !visited[row][col - 1]
+            ) {
+
+                neighbors.push({
+                    col: col - 1,
+                    row,
+                    direction: "left"
+                });
+            }
+
+
+            if (!neighbors.length) {
+
+                stack.pop();
+
+                continue;
+            }
+
+
+            const next =
+                neighbors[
+                    this.rng.int(
+                        0,
+                        neighbors.length - 1
+                    )
+                ];
+
+
+            /*
+             * Remove the shared wall.
+             */
+
+            if (next.direction === "top") {
+
+                walls[row][col].top = false;
+
+                walls[next.row][next.col].bottom =
+                    false;
+
+            } else if (
+                next.direction === "right"
+            ) {
+
+                walls[row][col].right = false;
+
+                walls[next.row][next.col].left =
+                    false;
+
+            } else if (
+                next.direction === "bottom"
+            ) {
+
+                walls[row][col].bottom = false;
+
+                walls[next.row][next.col].top =
+                    false;
+
+            } else if (
+                next.direction === "left"
+            ) {
+
+                walls[row][col].left = false;
+
+                walls[next.row][next.col].right =
+                    false;
+            }
+
+
+            visited[next.row][next.col] =
+                true;
+
+
+            stack.push([
+                next.col,
+                next.row
+            ]);
+        }
+
+
+        /*
+         * Convert maze walls into physical
+         * rectangular obstacles.
+         */
+
+        const wallThickness = 1.8;
+
+
+        for (let row = 0; row < rows; row++) {
+
+            for (let col = 0; col < cols; col++) {
+
+                const cellX =
+                    col * cellW;
+
+                const cellY =
+                    row * cellH;
+
+
+                const cell =
+                    walls[row][col];
+
+
+                /*
+                 * Top wall
+                 */
+
+                if (cell.top) {
+
+                    this.obstacles.push({
+
+                        x:
+                            cellX,
+
+                        y:
+                            cellY,
+
+                        w:
+                            cellW,
+
+                        h:
+                            wallThickness
+                    });
+                }
+
+
+                /*
+                 * Left wall
+                 */
+
+                if (cell.left) {
+
+                    this.obstacles.push({
+
+                        x:
+                            cellX,
+
+                        y:
+                            cellY,
+
+                        w:
+                            wallThickness,
+
+                        h:
+                            cellH
+                    });
+                }
+
+
+                /*
+                 * Right wall
+                 */
+
+                if (
+                    cell.right &&
+                    col === cols - 1
+                ) {
+
+                    this.obstacles.push({
+
+                        x:
+                            cellX +
+                            cellW -
+                            wallThickness,
+
+                        y:
+                            cellY,
+
+                        w:
+                            wallThickness,
+
+                        h:
+                            cellH
+                    });
+                }
+
+
+                /*
+                 * Bottom wall
+                 */
+
+                if (
+                    cell.bottom &&
+                    row === rows - 1
+                ) {
+
+                    this.obstacles.push({
+
+                        x:
+                            cellX,
+
+                        y:
+                            cellY +
+                            cellH -
+                            wallThickness,
+
+                        w:
+                            cellW,
+
+                        h:
+                            wallThickness
+                    });
+                }
+            }
+        }
+
+
+        /*
+         * Open the starting boundary so the fly
+         * doesn't spawn trapped.
+         */
+
+        this.obstacles =
+            this.obstacles.filter(obstacle => {
+
+                const startOpening = {
+
+                    x: 0,
+
+                    y:
+                        startRow *
+                        cellH +
+                        cellH * 0.25,
+
+                    w: 4,
+
+                    h:
+                        cellH * 0.5
+                };
+
+
+                return !(
+                    obstacle.x <
+                        startOpening.x +
+                        startOpening.w &&
+
+                    obstacle.x +
+                        obstacle.w >
+                        startOpening.x &&
+
+                    obstacle.y <
+                        startOpening.y +
+                        startOpening.h &&
+
+                    obstacle.y +
+                        obstacle.h >
+                        startOpening.y
+                );
+            });
+    }
+
+
+    generateFood() {
+
+        /*
+         * Maze gets one target.
+         * Other modes get 1-3 targets.
+         */
+
+        const count =
+            this.mode === "maze"
+                ? 1
+                : this.rng.int(1, 3);
+
+
+        for (let i = 0; i < count; i++) {
+
+            let food;
+
+            let attempts = 0;
+
+
+            do {
+
+                food = {
+
+                    x:
+                        this.mode === "maze"
+                            ? this.rng.range(
+                                72,
+                                94
+                            )
+                            : this.rng.range(
+                                60,
+                                94
+                            ),
+
+                    y:
+                        this.rng.range(
+                            6,
+                            64
+                        )
+                };
+
+
+                attempts++;
+
+            } while (
+
+                (
+                    this.foodTooClose(food) ||
+
+                    this.pointInsideObstacle(
+                        food.x,
+                        food.y
+                    )
+                ) &&
+
+                attempts < 100
+            );
+
+
+            if (
+                !this.pointInsideObstacle(
+                    food.x,
+                    food.y
+                )
+            ) {
+
+                this.food.push(food);
+            }
+        }
+
+
+        /*
+         * Safety fallback.
+         *
+         * Ensures every experiment has food.
+         */
+
+        if (!this.food.length) {
+
+            this.food.push({
+                x: 85,
+                y: 35
+            });
+        }
+    }
+
+
+    foodTooClose(food) {
+
+        if (
+
+            Math.hypot(
+                food.x - this.fly.x,
+                food.y - this.fly.y
+            ) < 15
+
+        ) {
+
+            return true;
+        }
+
+
+        return this.food.some(existing => {
+
+            return (
+
+                Math.hypot(
+                    food.x - existing.x,
+                    food.y - existing.y
+                ) < 10
+            );
+        });
+    }
+
+
+    pointInsideObstacle(x, y) {
+
+        return this.obstacles.some(obstacle => {
+
+            return (
+
+                x >= obstacle.x - 2 &&
+
+                x <=
+                    obstacle.x +
+                    obstacle.w +
+                    2 &&
+
+                y >= obstacle.y - 2 &&
+
+                y <=
+                    obstacle.y +
+                    obstacle.h +
+                    2
+            );
+        });
+    }
+
+
+    nearestFood() {
+
+        if (!this.food.length) {
+            return null;
+        }
+
+
+        return this.food.reduce(
+            (best, food) => {
+
+                const a =
+                    this.distanceBetween(
+                        this.fly.x,
+                        this.fly.y,
+                        best.x,
+                        best.y
+                    );
+
+
+                const b =
+                    this.distanceBetween(
+                        this.fly.x,
+                        this.fly.y,
+                        food.x,
+                        food.y
+                    );
+
+
+                return b < a
+                    ? food
+                    : best;
+
+            }
+        );
+    }
+
+
+    distanceBetween(
+        x1,
+        y1,
+        x2,
+        y2
+    ) {
+
         return Math.hypot(
             x2 - x1,
             y2 - y1
         );
     }
 
+
     foodSignal() {
-        const food = this.nearestFood();
+
+        const food =
+            this.nearestFood();
+
 
         if (!food) {
+
             return {
+
                 strength: 0,
+
                 error: 0
             };
         }
 
+
         const dx =
-            food.x - this.fly.x;
+            food.x -
+            this.fly.x;
+
 
         const dy =
-            food.y - this.fly.y;
+            food.y -
+            this.fly.y;
+
 
         const distance =
-            Math.hypot(dx, dy);
+            Math.hypot(
+                dx,
+                dy
+            );
+
 
         const direction =
-            Math.atan2(dy, dx);
+            Math.atan2(
+                dy,
+                dx
+            );
+
 
         const error =
             Math.atan2(
+
                 Math.sin(
-                    direction - this.fly.angle
+                    direction -
+                    this.fly.angle
                 ),
+
                 Math.cos(
-                    direction - this.fly.angle
+                    direction -
+                    this.fly.angle
                 )
             );
 
+
         return {
+
             strength:
-                Math.exp(-distance / 35),
+                Math.exp(
+                    -distance / 35
+                ),
 
             error
         };
     }
 
+
     obstacleSignal() {
 
-    const rays = [
-        { angle: -0.65, weight: 0.55 },
-        { angle: -0.35, weight: 0.85 },
-        { angle: 0,     weight: 1.0 },
-        { angle: 0.35,  weight: 0.85 },
-        { angle: 0.65,  weight: 0.55 }
-    ];
+        const rays = [
 
-    const maxDistance = 16;
+            {
+                angle: -0.65,
+                weight: 0.55
+            },
 
-    let left = 0;
-    let right = 0;
-    let front = 0;
+            {
+                angle: -0.35,
+                weight: 0.85
+            },
 
-    for (const ray of rays) {
+            {
+                angle: 0,
+                weight: 1.0
+            },
 
-        let strength = 0;
+            {
+                angle: 0.35,
+                weight: 0.85
+            },
 
-        for (
-            let d = 1;
-            d <= maxDistance;
-            d += 1
-        ) {
+            {
+                angle: 0.65,
+                weight: 0.55
+            }
+        ];
 
-            const x =
-                this.fly.x +
-                Math.cos(
-                    this.fly.angle + ray.angle
-                ) * d;
 
-            const y =
-                this.fly.y +
-                Math.sin(
-                    this.fly.angle + ray.angle
-                ) * d;
+        const maxDistance = 16;
 
-            // Existing obstacles
-            const hitObstacle =
-                this.obstacles.some(obstacle =>
-                    x >= obstacle.x &&
-                    x <= obstacle.x + obstacle.w &&
-                    y >= obstacle.y &&
-                    y <= obstacle.y + obstacle.h
-                );
 
-            // Canvas border
-            const hitBorder =
-                x <= 2 ||
-                x >= this.width - 2 ||
-                y <= 2 ||
-                y >= this.height - 2;
+        let left = 0;
 
-            if (hitObstacle || hitBorder) {
+        let right = 0;
 
-                strength =
-                    (1 - d / maxDistance) *
-                    ray.weight;
+        let front = 0;
 
-                break;
+
+        for (const ray of rays) {
+
+            let strength = 0;
+
+
+            for (
+                let d = 1;
+                d <= maxDistance;
+                d += 1
+            ) {
+
+                const x =
+                    this.fly.x +
+                    Math.cos(
+                        this.fly.angle +
+                        ray.angle
+                    ) *
+                    d;
+
+
+                const y =
+                    this.fly.y +
+                    Math.sin(
+                        this.fly.angle +
+                        ray.angle
+                    ) *
+                    d;
+
+
+                const hitObstacle =
+                    this.obstacles.some(
+                        obstacle =>
+
+                            x >= obstacle.x &&
+
+                            x <=
+                                obstacle.x +
+                                obstacle.w &&
+
+                            y >= obstacle.y &&
+
+                            y <=
+                                obstacle.y +
+                                obstacle.h
+                    );
+
+
+                const hitBorder =
+                    x <= 2 ||
+                    x >= this.width - 2 ||
+                    y <= 2 ||
+                    y >= this.height - 2;
+
+
+                if (
+                    hitObstacle ||
+                    hitBorder
+                ) {
+
+                    strength =
+                        (
+                            1 -
+                            d /
+                            maxDistance
+                        ) *
+                        ray.weight;
+
+                    break;
+                }
+            }
+
+
+            if (ray.angle < -0.1) {
+
+                left =
+                    Math.max(
+                        left,
+                        strength
+                    );
+
+            } else if (
+                ray.angle > 0.1
+            ) {
+
+                right =
+                    Math.max(
+                        right,
+                        strength
+                    );
+
+            } else {
+
+                front =
+                    Math.max(
+                        front,
+                        strength
+                    );
             }
         }
 
-        if (ray.angle < -0.1) {
 
-            left =
-                Math.max(left, strength);
+        return {
 
-        } else if (ray.angle > 0.1) {
+            left,
 
-            right =
-                Math.max(right, strength);
+            right,
 
-        } else {
-
-            front =
-                Math.max(front, strength);
-        }
+            front
+        };
     }
 
-    return {
-        left,
-        right,
-        front
-    };
-}
 
     visualFeatures(mode) {
-    const food = this.foodSignal();
-    const obstacle = this.obstacleSignal();
 
-    const foodWeight = {
-        food: 1.0,
-        obstacle: 0.2,
-        competing: 1.0,
-        maze: 0.8
-    }[mode] ?? 1.0;
+        const food =
+            this.foodSignal();
 
-    const obstacleWeight = {
-        food: 0.7,
-        obstacle: 1.2,
-        competing: 1.0,
-        maze: 1.4
-    }[mode] ?? 1.0;
 
-    // Food direction relative to the fly:
-    // left  = negative angle
-    // center = angle near 0
-    // right = positive angle
-    const foodLeft =
-        food.strength *
-        Math.max(0, -Math.sin(food.error));
+        const obstacle =
+            this.obstacleSignal();
 
-    const foodRight =
-        food.strength *
-        Math.max(0, Math.sin(food.error));
 
-    const foodCenter =
-        food.strength *
-        Math.max(0, Math.cos(food.error));
+        const foodWeight = {
 
-    return {
-        leftFood:
-            Math.min(1, foodLeft * foodWeight),
+            food: 1.0,
 
-        rightFood:
-            Math.min(1, foodRight * foodWeight),
+            obstacle: 0.2,
 
-        centerFood:
-            Math.min(1, foodCenter * foodWeight),
+            competing: 1.0,
 
-        obstacleLeft:
-            Math.min(1, obstacle.left * obstacleWeight),
+            maze: 0.8
 
-        obstacleRight:
-            Math.min(1, obstacle.right * obstacleWeight),
+        }[mode] ?? 1.0;
 
-        obstacleFront:
-            Math.min(1, obstacle.front * obstacleWeight)
-    };
-}
+
+        const obstacleWeight = {
+
+            food: 0.7,
+
+            obstacle: 1.2,
+
+            competing: 1.0,
+
+            maze: 1.4
+
+        }[mode] ?? 1.0;
+
+
+        /*
+         * Food direction:
+         *
+         * negative angle = left
+         * positive angle = right
+         * near zero       = center
+         */
+
+        const foodLeft =
+            food.strength *
+            Math.max(
+                0,
+                -Math.sin(food.error)
+            );
+
+
+        const foodRight =
+            food.strength *
+            Math.max(
+                0,
+                Math.sin(food.error)
+            );
+
+
+        const foodCenter =
+            food.strength *
+            Math.max(
+                0,
+                Math.cos(food.error)
+            );
+
+
+        return {
+
+            leftFood:
+                Math.min(
+                    1,
+                    foodLeft *
+                    foodWeight
+                ),
+
+
+            rightFood:
+                Math.min(
+                    1,
+                    foodRight *
+                    foodWeight
+                ),
+
+
+            centerFood:
+                Math.min(
+                    1,
+                    foodCenter *
+                    foodWeight
+                ),
+
+
+            obstacleLeft:
+                Math.min(
+                    1,
+                    obstacle.left *
+                    obstacleWeight
+                ),
+
+
+            obstacleRight:
+                Math.min(
+                    1,
+                    obstacle.right *
+                    obstacleWeight
+                ),
+
+
+            obstacleFront:
+                Math.min(
+                    1,
+                    obstacle.front *
+                    obstacleWeight
+                )
+        };
+    }
+
+
     move(motor) {
 
-        const oldX = this.fly.x;
-        const oldY = this.fly.y;
+        const oldX =
+            this.fly.x;
 
-        const maxTurn = 0.16;
-        const maxSpeed = 0.62;
+
+        const oldY =
+            this.fly.y;
+
+
+        const maxTurn =
+            0.16;
+
+
+        const maxSpeed =
+            0.62;
+
 
         const turn =
             Math.max(
@@ -497,6 +1565,7 @@ class World {
                 )
             );
 
+
         const speed =
             Math.max(
                 0,
@@ -506,22 +1575,40 @@ class World {
                 )
             );
 
-        // Continuous steering
-        this.fly.angle +=
-            turn * maxTurn;
 
-        // Continuous forward movement
+        /*
+         * Continuous steering
+         */
+
+        this.fly.angle +=
+            turn *
+            maxTurn;
+
+
+        /*
+         * Continuous forward movement
+         */
+
         this.fly.x +=
-            Math.cos(this.fly.angle) *
+            Math.cos(
+                this.fly.angle
+            ) *
             maxSpeed *
             speed;
+
 
         this.fly.y +=
-            Math.sin(this.fly.angle) *
+            Math.sin(
+                this.fly.angle
+            ) *
             maxSpeed *
             speed;
 
-        // Keep the fly inside the world
+
+        /*
+         * Keep fly inside world.
+         */
+
         this.fly.x =
             Math.max(
                 2,
@@ -530,6 +1617,7 @@ class World {
                     this.fly.x
                 )
             );
+
 
         this.fly.y =
             Math.max(
@@ -540,123 +1628,201 @@ class World {
                 )
             );
 
+
         this.distance +=
             Math.hypot(
                 this.fly.x - oldX,
                 this.fly.y - oldY
             );
 
+
         this.checkCollisions();
+
         this.checkFood();
     }
 
+
     checkCollisions() {
 
-    const r = 1.5;
+        const r = 1.5;
 
-    // Normal obstacles
-    for (const obstacle of this.obstacles) {
+
+        /*
+         * Normal obstacles
+         */
+
+        for (
+            const obstacle
+            of this.obstacles
+        ) {
+
+            if (
+
+                this.fly.x + r >
+                    obstacle.x &&
+
+                this.fly.x - r <
+                    obstacle.x +
+                    obstacle.w &&
+
+                this.fly.y + r >
+                    obstacle.y &&
+
+                this.fly.y - r <
+                    obstacle.y +
+                    obstacle.h
+
+            ) {
+
+                this.collisions++;
+
+
+                this.fly.x -=
+                    Math.cos(
+                        this.fly.angle
+                    ) *
+                    2;
+
+
+                this.fly.y -=
+                    Math.sin(
+                        this.fly.angle
+                    ) *
+                    2;
+
+
+                const centerY =
+                    obstacle.y +
+                    obstacle.h / 2;
+
+
+                if (
+                    this.fly.y < centerY
+                ) {
+
+                    this.fly.angle -=
+                        0.45;
+
+                } else {
+
+                    this.fly.angle +=
+                        0.45;
+                }
+
+
+                return;
+            }
+        }
+
+
+        /*
+         * Canvas borders
+         */
+
+        const hitLeft =
+            this.fly.x - r <= 2;
+
+
+        const hitRight =
+            this.fly.x + r >=
+            this.width - 2;
+
+
+        const hitTop =
+            this.fly.y - r <= 2;
+
+
+        const hitBottom =
+            this.fly.y + r >=
+            this.height - 2;
+
 
         if (
-            this.fly.x + r > obstacle.x &&
-            this.fly.x - r <
-                obstacle.x + obstacle.w &&
-            this.fly.y + r > obstacle.y &&
-            this.fly.y - r <
-                obstacle.y + obstacle.h
+            hitLeft ||
+            hitRight ||
+            hitTop ||
+            hitBottom
         ) {
 
             this.collisions++;
 
-            this.fly.x -=
-                Math.cos(
-                    this.fly.angle
-                ) * 2;
 
-            this.fly.y -=
-                Math.sin(
-                    this.fly.angle
-                ) * 2;
+            if (hitLeft) {
 
-            const centerY =
-                obstacle.y +
-                obstacle.h / 2;
+                this.fly.x = 3;
 
-            if (this.fly.y < centerY) {
-                this.fly.angle -= 0.45;
-            } else {
-                this.fly.angle += 0.45;
+                this.fly.angle = 0;
             }
 
-            return;
+
+            if (hitRight) {
+
+                this.fly.x =
+                    this.width - 3;
+
+                this.fly.angle =
+                    Math.PI;
+            }
+
+
+            if (hitTop) {
+
+                this.fly.y = 3;
+
+                this.fly.angle =
+                    Math.PI / 2;
+            }
+
+
+            if (hitBottom) {
+
+                this.fly.y =
+                    this.height - 3;
+
+                this.fly.angle =
+                    -Math.PI / 2;
+            }
         }
     }
 
-    // Canvas borders
-    const hitLeft =
-        this.fly.x - r <= 2;
 
-    const hitRight =
-        this.fly.x + r >= this.width - 2;
-
-    const hitTop =
-        this.fly.y - r <= 2;
-
-    const hitBottom =
-        this.fly.y + r >= this.height - 2;
-
-    if (
-        hitLeft ||
-        hitRight ||
-        hitTop ||
-        hitBottom
-    ) {
-
-        this.collisions++;
-
-        // Push the fly back inside
-        if (hitLeft) {
-            this.fly.x = 3;
-            this.fly.angle = 0;
-        }
-
-        if (hitRight) {
-            this.fly.x = this.width - 3;
-            this.fly.angle = Math.PI;
-        }
-
-        if (hitTop) {
-            this.fly.y = 3;
-            this.fly.angle = Math.PI / 2;
-        }
-
-        if (hitBottom) {
-            this.fly.y = this.height - 3;
-            this.fly.angle = -Math.PI / 2;
-        }
-    }
-}
     checkFood() {
 
         for (
-            let i = this.food.length - 1;
+            let i =
+                this.food.length - 1;
+
             i >= 0;
+
             i--
         ) {
 
             const food =
                 this.food[i];
 
+
             if (
+
                 this.distanceBetween(
+
                     this.fly.x,
+
                     this.fly.y,
+
                     food.x,
+
                     food.y
+
                 ) < 3
+
             ) {
 
-                this.food.splice(i, 1);
+                this.food.splice(
+                    i,
+                    1
+                );
+
+
                 this.foodReached++;
             }
         }
@@ -673,18 +1839,22 @@ class BehaviorDecoder {
             descending.DNp06 +
             descending.DNp55;
 
+
         const right =
             descending.DNb06 +
             descending.DNp56 +
             descending.DNp26;
 
+
         const forward =
             descending.DNae005 +
             descending.DNbe007;
 
+
         const stop =
             descending.DNge054 +
             descending.DNa10;
+
 
         const total =
             left +
@@ -692,30 +1862,44 @@ class BehaviorDecoder {
             forward +
             stop;
 
+
         if (total < 0.01) {
 
             return {
+
                 turn: 0,
+
                 speed: 0.15,
+
                 action: "forward",
 
                 values: {
+
                     left,
+
                     right,
+
                     forward,
+
                     stop
                 }
             };
         }
 
-        // Continuous steering
-        // Positive = right
-        // Negative = left
+
+        /*
+         * Continuous steering.
+         *
+         * Positive = right
+         * Negative = left
+         */
+
         const turn =
             Math.max(
                 -1,
                 Math.min(
                     1,
+
                     (right - left) /
                     Math.max(
                         0.5,
@@ -724,13 +1908,19 @@ class BehaviorDecoder {
                 )
             );
 
-        // Reduce forward drive
-        // when stop dominates
+
+        /*
+         * Reduce forward drive
+         * when stop dominates.
+         */
+
         const forwardDrive =
             Math.max(
                 0,
-                forward - stop * 0.7
+                forward -
+                stop * 0.7
             );
+
 
         const speed =
             Math.max(
@@ -741,9 +1931,14 @@ class BehaviorDecoder {
                 )
             );
 
-        let action = "forward";
 
-        if (Math.abs(turn) > 0.18) {
+        let action =
+            "forward";
+
+
+        if (
+            Math.abs(turn) > 0.18
+        ) {
 
             action =
                 turn < 0
@@ -751,283 +1946,583 @@ class BehaviorDecoder {
                     : "turn_right";
         }
 
-        if (speed < 0.12) {
-            action = "stop";
+
+        if (
+            speed < 0.12
+        ) {
+
+            action =
+                "stop";
         }
 
+
         return {
+
             turn,
+
             speed,
+
             action,
 
             values: {
+
                 left,
+
                 right,
+
                 forward,
+
                 stop
             }
         };
     }
 }
-const circuit = new NeuralCircuit();
-const world = new World();
-const decoder = new BehaviorDecoder();
 
-let currentMode = "food";
-let paused = false;
-let elapsed = 0;
 
-function createActivityBars(containerId, neurons) {
+const circuit =
+    new NeuralCircuit();
+
+
+const world =
+    new World();
+
+
+const decoder =
+    new BehaviorDecoder();
+
+
+let currentMode =
+    "food";
+
+
+let paused =
+    false;
+
+
+let elapsed =
+    0;
+
+
+/*
+ * Optional seed input.
+ *
+ * This doesn't require any HTML changes.
+ * If you later add:
+ *
+ * <input id="seedInput">
+ *
+ * it will automatically be used.
+ */
+
+const seedInput =
+    document.getElementById(
+        "seedInput"
+    );
+
+
+function createActivityBars(
+    containerId,
+    neurons
+) {
 
     const container =
-        document.getElementById(containerId);
+        document.getElementById(
+            containerId
+        );
+
 
     container.innerHTML = "";
 
-    for (const neuron of neurons) {
+
+    for (
+        const neuron
+        of neurons
+    ) {
 
         const element =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
 
-        element.className = "neuron";
+
+        element.className =
+            "neuron";
+
 
         element.innerHTML = `
+
             <div class="neuron-top">
-                <span class="neuron-name">${neuron}</span>
-                <span class="neuron-value" id="value-${neuron}">0.000</span>
+
+                <span class="neuron-name">
+                    ${neuron}
+                </span>
+
+                <span
+                    class="neuron-value"
+                    id="value-${neuron}"
+                >
+                    0.000
+                </span>
+
             </div>
 
             <div class="bar">
-                <div class="bar-fill" id="bar-${neuron}"></div>
+
+                <div
+                    class="bar-fill"
+                    id="bar-${neuron}"
+                ></div>
+
             </div>
+
         `;
 
-        container.appendChild(element);
+
+        container.appendChild(
+            element
+        );
     }
 }
 
-createActivityBars("visualActivity", VISUAL);
-createActivityBars("centralActivity", CENTRAL);
-createActivityBars("descendingActivity", DESCENDING);
+
+createActivityBars(
+    "visualActivity",
+    VISUAL
+);
+
+
+createActivityBars(
+    "centralActivity",
+    CENTRAL
+);
+
+
+createActivityBars(
+    "descendingActivity",
+    DESCENDING
+);
+
 
 function createLesionControls() {
 
     const container =
-        document.getElementById("lesionList");
+        document.getElementById(
+            "lesionList"
+        );
+
 
     container.innerHTML = "";
 
+
     const candidates = [
+
         "CB0524",
+
         "SAD043",
+
         "LHAD1g1",
+
         "CB0500",
+
         "PLP213",
+
         "CB0492"
+
     ];
 
-    for (const neuron of candidates) {
+
+    for (
+        const neuron
+        of candidates
+    ) {
 
         const item =
-            document.createElement("label");
+            document.createElement(
+                "label"
+            );
 
-        item.className = "lesion-item";
+
+        item.className =
+            "lesion-item";
+
 
         item.innerHTML = `
-            <span>${neuron}</span>
-            <input type="checkbox" data-lesion="${neuron}">
+
+            <span>
+                ${neuron}
+            </span>
+
+            <input
+                type="checkbox"
+                data-lesion="${neuron}"
+            >
+
         `;
 
-        container.appendChild(item);
+
+        container.appendChild(
+            item
+        );
     }
 }
 
+
 createLesionControls();
 
-document.querySelectorAll("[data-lesion]").forEach(input => {
 
-    input.addEventListener("change", () => {
+document
+    .querySelectorAll(
+        "[data-lesion]"
+    )
+    .forEach(input => {
 
-        const neuron = input.dataset.lesion;
+        input.addEventListener(
+            "change",
+            () => {
 
-        if (input.checked) {
-            circuit.lesions.add(neuron);
-        } else {
-            circuit.lesions.delete(neuron);
-        }
+                const neuron =
+                    input.dataset.lesion;
 
-        networkState.textContent =
-            circuit.lesions.size
-                ? `${circuit.lesions.size} LESION${circuit.lesions.size > 1 ? "S" : ""}`
-                : "ACTIVE";
+
+                if (input.checked) {
+
+                    circuit.lesions.add(
+                        neuron
+                    );
+
+                } else {
+
+                    circuit.lesions.delete(
+                        neuron
+                    );
+                }
+
+
+                networkState.textContent =
+                    circuit.lesions.size
+
+                        ? `${circuit.lesions.size} LESION${
+                            circuit.lesions.size > 1
+                                ? "S"
+                                : ""
+                        }`
+
+                        : "ACTIVE";
+            }
+        );
     });
-});
 
-lesionToggle.addEventListener("change", () => {
 
-    document.querySelectorAll("[data-lesion]")
-        .forEach(input => {
-            input.disabled = !lesionToggle.checked;
-        });
+lesionToggle.addEventListener(
+    "change",
+    () => {
 
-    if (!lesionToggle.checked) {
-
-        circuit.lesions.clear();
-
-        document.querySelectorAll("[data-lesion]")
+        document
+            .querySelectorAll(
+                "[data-lesion]"
+            )
             .forEach(input => {
-                input.checked = false;
+
+                input.disabled =
+                    !lesionToggle.checked;
             });
 
-        networkState.textContent = "ACTIVE";
-    }
-});
 
-document.querySelectorAll("[data-lesion]")
+        if (
+            !lesionToggle.checked
+        ) {
+
+            circuit.lesions.clear();
+
+
+            document
+                .querySelectorAll(
+                    "[data-lesion]"
+                )
+                .forEach(input => {
+
+                    input.checked =
+                        false;
+                });
+
+
+            networkState.textContent =
+                "ACTIVE";
+        }
+    }
+);
+
+
+document
+    .querySelectorAll(
+        "[data-lesion]"
+    )
     .forEach(input => {
+
         input.disabled = true;
     });
 
+
 function updateActivityBars(group) {
 
-    for (const neuron of Object.keys(group)) {
+    for (
+        const neuron
+        of Object.keys(group)
+    ) {
 
         const value =
-            Math.max(0, Math.min(1, group[neuron]));
+            Math.max(
+                0,
+                Math.min(
+                    1,
+                    group[neuron]
+                )
+            );
+
 
         const bar =
-            document.getElementById(`bar-${neuron}`);
+            document.getElementById(
+                `bar-${neuron}`
+            );
+
 
         const label =
-            document.getElementById(`value-${neuron}`);
+            document.getElementById(
+                `value-${neuron}`
+            );
+
 
         if (bar) {
+
             bar.style.width =
                 `${value * 100}%`;
         }
 
+
         if (label) {
+
             label.textContent =
                 value.toFixed(3);
         }
     }
 }
 
-function encodeVisualInput(features) {
+
+function encodeVisualInput(
+    features
+) {
+
     return {
-        LTe42b: features.leftFood,
-        LTe15: features.leftFood * 0.85,
 
-        LPT54: features.rightFood,
-        LT87: features.rightFood * 0.9,
+        LTe42b:
+            features.leftFood,
 
-        // Centered food signal keeps food directly ahead visible
-        // to the visual input layer.
+
+        LTe15:
+            features.leftFood *
+            0.85,
+
+
+        LPT54:
+            features.rightFood,
+
+
+        LT87:
+            features.rightFood *
+            0.9,
+
+
+        /*
+         * Centered food signal keeps food
+         * directly ahead visible.
+         */
+
         LPT48_vCal3:
             Math.max(
+
                 features.centerFood,
-                (features.leftFood + features.rightFood) / 2
+
+                (
+                    features.leftFood +
+                    features.rightFood
+                ) / 2
+
             ),
+
 
         VST2:
             Math.max(
+
                 features.obstacleLeft,
+
                 features.obstacleFront
+
             ),
+
 
         LPLC4:
             Math.max(
+
                 features.obstacleRight,
+
                 features.obstacleFront
+
             )
     };
 }
+
 
 function updateMetrics(action) {
 
     positionLabel.textContent =
         `${world.fly.x.toFixed(1)}, ${world.fly.y.toFixed(1)}`;
 
+
     actionLabel.textContent =
-        action.replace("_", " ").toUpperCase();
+        action
+            .replace("_", " ")
+            .toUpperCase();
+
 
     simTimeLabel.textContent =
         `${elapsed.toFixed(1)}s`;
 
+
     foodReachedLabel.textContent =
         world.foodReached;
+
 
     collisionsLabel.textContent =
         world.collisions;
 
+
     distanceLabel.textContent =
         world.distance.toFixed(1);
+
 
     const success =
         world.food.length === 0;
 
+
     successLabel.textContent =
-        success ? "YES" : "NO";
+        success
+            ? "YES"
+            : "NO";
 }
+
 
 function updateSimulation() {
 
-    if (paused) return;
+    if (paused) {
+        return;
+    }
+
 
     elapsed += 0.05;
 
+
     const features =
-        world.visualFeatures(currentMode);
+        world.visualFeatures(
+            currentMode
+        );
+
 
     const input =
-        encodeVisualInput(features);
+        encodeVisualInput(
+            features
+        );
+
 
     const descending =
-        circuit.step(input);
+        circuit.step(
+            input
+        );
+
 
     const result =
-    decoder.decode(descending);
+        decoder.decode(
+            descending
+        );
 
-world.move(result);
 
-    updateActivityBars(circuit.visual);
-    updateActivityBars(circuit.central);
-    updateActivityBars(circuit.descending);
+    world.move(
+        result
+    );
 
-    updateMetrics(result.action);
+
+    updateActivityBars(
+        circuit.visual
+    );
+
+
+    updateActivityBars(
+        circuit.central
+    );
+
+
+    updateActivityBars(
+        circuit.descending
+    );
+
+
+    updateMetrics(
+        result.action
+    );
 }
+
 
 function resizeCanvas() {
 
     const rect =
         canvas.getBoundingClientRect();
 
+
     const dpr =
-        window.devicePixelRatio || 1;
+        window.devicePixelRatio ||
+        1;
+
 
     canvas.width =
         rect.width * dpr;
 
+
     canvas.height =
         rect.height * dpr;
 
+
     ctx.setTransform(
+
         dpr,
+
         0,
+
         0,
+
         dpr,
+
         0,
+
         0
     );
 }
 
+
 function worldToScreen(x, y) {
 
     return {
-        x: x / world.width * canvas.clientWidth,
-        y: y / world.height * canvas.clientHeight
+
+        x:
+            x /
+            world.width *
+            canvas.clientWidth,
+
+        y:
+            y /
+            world.height *
+            canvas.clientHeight
     };
 }
+
 
 function drawFly() {
 
@@ -1037,27 +2532,68 @@ function drawFly() {
             world.fly.y
         );
 
+
     ctx.save();
 
-    ctx.translate(p.x, p.y);
-    ctx.rotate(world.fly.angle);
+
+    ctx.translate(
+        p.x,
+        p.y
+    );
+
+
+    ctx.rotate(
+        world.fly.angle
+    );
+
 
     ctx.beginPath();
-    ctx.moveTo(11, 0);
-    ctx.lineTo(-7, -6);
-    ctx.lineTo(-5, 0);
-    ctx.lineTo(-7, 6);
+
+
+    ctx.moveTo(
+        11,
+        0
+    );
+
+
+    ctx.lineTo(
+        -7,
+        -6
+    );
+
+
+    ctx.lineTo(
+        -5,
+        0
+    );
+
+
+    ctx.lineTo(
+        -7,
+        6
+    );
+
+
     ctx.closePath();
 
-    ctx.fillStyle = "#e7edf2";
+
+    ctx.fillStyle =
+        "#e7edf2";
+
+
     ctx.fill();
+
 
     ctx.restore();
 }
 
+
 function drawFood() {
 
-    for (const food of world.food) {
+    for (
+        const food
+        of world.food
+    ) {
 
         const p =
             worldToScreen(
@@ -1065,23 +2601,40 @@ function drawFood() {
                 food.y
             );
 
+
         ctx.beginPath();
+
+
         ctx.arc(
+
             p.x,
+
             p.y,
+
             5,
+
             0,
+
             Math.PI * 2
+
         );
 
-        ctx.fillStyle = "#70d6a0";
+
+        ctx.fillStyle =
+            "#70d6a0";
+
+
         ctx.fill();
     }
 }
 
+
 function drawObstacles() {
 
-    for (const obstacle of world.obstacles) {
+    for (
+        const obstacle
+        of world.obstacles
+    ) {
 
         const p =
             worldToScreen(
@@ -1089,30 +2642,51 @@ function drawObstacles() {
                 obstacle.y
             );
 
+
         const p2 =
             worldToScreen(
-                obstacle.x + obstacle.w,
-                obstacle.y + obstacle.h
+
+                obstacle.x +
+                obstacle.w,
+
+                obstacle.y +
+                obstacle.h
             );
 
-        ctx.fillStyle = "#1c2229";
+
+        ctx.fillStyle =
+            "#1c2229";
+
 
         ctx.fillRect(
+
             p.x,
+
             p.y,
+
             p2.x - p.x,
+
             p2.y - p.y
         );
 
-        ctx.strokeStyle = "#343d46";
+
+        ctx.strokeStyle =
+            "#343d46";
+
+
         ctx.strokeRect(
+
             p.x,
+
             p.y,
+
             p2.x - p.x,
+
             p2.y - p.y
         );
     }
 }
+
 
 function drawSensorCone() {
 
@@ -1122,48 +2696,95 @@ function drawSensorCone() {
             world.fly.y
         );
 
+
     const length =
-        13 / world.width * canvas.clientWidth;
+        13 /
+        world.width *
+        canvas.clientWidth;
+
 
     ctx.save();
 
-    ctx.translate(p.x, p.y);
-    ctx.rotate(world.fly.angle);
+
+    ctx.translate(
+        p.x,
+        p.y
+    );
+
+
+    ctx.rotate(
+        world.fly.angle
+    );
+
 
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(length, -length * 0.35);
-    ctx.lineTo(length, length * 0.35);
+
+
+    ctx.moveTo(
+        0,
+        0
+    );
+
+
+    ctx.lineTo(
+        length,
+        -length * 0.35
+    );
+
+
+    ctx.lineTo(
+        length,
+        length * 0.35
+    );
+
+
     ctx.closePath();
+
 
     ctx.strokeStyle =
         "rgba(91,192,255,.25)";
 
+
     ctx.stroke();
+
 
     ctx.restore();
 }
 
+
 function render() {
 
     ctx.clearRect(
+
         0,
+
         0,
+
         canvas.clientWidth,
+
         canvas.clientHeight
     );
 
+
     drawObstacles();
+
     drawFood();
+
     drawSensorCone();
+
     drawFly();
 
-    requestAnimationFrame(render);
+
+    requestAnimationFrame(
+        render
+    );
 }
+
 
 function simulationLoop() {
 
     updateSimulation();
+
 
     setTimeout(
         simulationLoop,
@@ -1171,67 +2792,155 @@ function simulationLoop() {
     );
 }
 
-modeButtons.forEach(button => {
 
-    button.addEventListener("click", () => {
+modeButtons.forEach(
+    button => {
 
-        modeButtons.forEach(b =>
-            b.classList.remove("active")
+        button.addEventListener(
+            "click",
+            () => {
+
+                modeButtons.forEach(
+                    b =>
+                        b.classList.remove(
+                            "active"
+                        )
+                );
+
+
+                button.classList.add(
+                    "active"
+                );
+
+
+                currentMode =
+                    button.dataset.mode;
+
+
+                modeLabel.textContent =
+                    button.textContent.toUpperCase();
+
+
+                resetSimulation();
+            }
         );
+    }
+);
 
-        button.classList.add("active");
 
-        currentMode =
-            button.dataset.mode;
+pauseBtn.addEventListener(
+    "click",
+    () => {
 
-        modeLabel.textContent =
-            button.textContent.toUpperCase();
+        paused =
+            !paused;
 
-        resetSimulation();
-    });
-});
 
-pauseBtn.addEventListener("click", () => {
+        pauseBtn.textContent =
+            paused
+                ? "Resume"
+                : "Pause";
 
-    paused = !paused;
 
-    pauseBtn.textContent =
-        paused ? "Resume" : "Pause";
+        statusText.textContent =
+            paused
+                ? "PAUSED"
+                : "RUNNING";
+    }
+);
 
-    statusText.textContent =
-        paused ? "PAUSED" : "RUNNING";
-});
 
 resetBtn.addEventListener(
     "click",
     resetSimulation
 );
 
+
 function resetSimulation() {
 
-    world.reset();
+    let seed = null;
+
+
+    /*
+     * If a seed input exists in the HTML,
+     * use it.
+     */
+
+    if (seedInput) {
+
+        const value =
+            seedInput.value.trim();
+
+
+        if (value) {
+
+            seed = value;
+        }
+    }
+
+
+    /*
+     * Otherwise World.reset()
+     * generates a completely new seed.
+     */
+
+    world.reset(
+        seed,
+        currentMode
+    );
+
+
     circuit.reset();
+
 
     elapsed = 0;
 
+
     paused = false;
 
-    pauseBtn.textContent = "Pause";
-    statusText.textContent = "RUNNING";
 
-    updateMetrics("idle");
+    pauseBtn.textContent =
+        "Pause";
 
-    updateActivityBars(circuit.visual);
-    updateActivityBars(circuit.central);
-    updateActivityBars(circuit.descending);
+
+    statusText.textContent =
+        "RUNNING";
+
+
+    updateMetrics(
+        "idle"
+    );
+
+
+    updateActivityBars(
+        circuit.visual
+    );
+
+
+    updateActivityBars(
+        circuit.central
+    );
+
+
+    updateActivityBars(
+        circuit.descending
+    );
 }
+
 
 window.addEventListener(
     "resize",
     resizeCanvas
 );
 
+
 resizeCanvas();
+
+
 resetSimulation();
+
+
 render();
+
+
 simulationLoop();
