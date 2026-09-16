@@ -75,6 +75,45 @@ main {
 .controls {
     display: flex;
     gap: 6px;
+    align-items: center;
+}
+
+.seed-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+}
+
+.seed-control input {
+    width: 110px;
+    padding: 8px 9px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--text);
+    font: inherit;
+    letter-spacing: normal;
+}
+
+.seed-control input:focus {
+    outline: 1px solid var(--accent);
+    border-color: var(--accent);
+}
+
+.current-seed {
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}
+
+.current-seed strong {
+    color: var(--text);
+    font-weight: 500;
+    letter-spacing: normal;
 }
 
 button {
@@ -324,6 +363,10 @@ footer {
 
     .toolbar {
         flex-direction: column;
+    }
+
+    .controls {
+        flex-wrap: wrap;
     }
 
     .side {

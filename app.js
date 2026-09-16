@@ -8,6 +8,8 @@ const pauseBtn = document.getElementById("pauseBtn");
 
 const resetBtn = document.getElementById("resetBtn");
 
+const anotherBtn = document.getElementById("anotherBtn");
+
 const lesionToggle = document.getElementById("lesionToggle");
 
 const modeLabel = document.getElementById("modeLabel");
@@ -27,6 +29,8 @@ const distanceLabel = document.getElementById("distance");
 const successLabel = document.getElementById("success");
 
 const statusText = document.getElementById("statusText");
+
+const currentSeedLabel = document.getElementById("currentSeed");
 
 const networkState = document.getElementById("networkState");
 
@@ -2003,17 +2007,6 @@ let elapsed =
     0;
 
 
-/*
- * Optional seed input.
- *
- * This doesn't require any HTML changes.
- * If you later add:
- *
- * <input id="seedInput">
- *
- * it will automatically be used.
- */
-
 const seedInput =
     document.getElementById(
         "seedInput"
@@ -2852,42 +2845,48 @@ pauseBtn.addEventListener(
 
 resetBtn.addEventListener(
     "click",
-    resetSimulation
+    () => resetSimulation()
+);
+
+anotherBtn.addEventListener(
+    "click",
+    () => resetSimulation(null)
 );
 
 
-function resetSimulation() {
+seedInput.addEventListener(
+    "change",
+    () => {
 
-    let seed = null;
-
-
-    /*
-     * If a seed input exists in the HTML,
-     * use it.
-     */
-
-    if (seedInput) {
-
-        const value =
+        const seed =
             seedInput.value.trim();
 
 
-        if (value) {
+        if (seed) {
 
-            seed = value;
+            resetSimulation(seed);
+
+        } else {
+
+            seedInput.value =
+                world.seed;
         }
     }
+);
 
 
-    /*
-     * Otherwise World.reset()
-     * generates a completely new seed.
-     */
+function resetSimulation(seed = world.seed) {
 
     world.reset(
         seed,
         currentMode
     );
+
+    seedInput.value =
+        world.seed;
+
+    currentSeedLabel.textContent =
+        world.seed;
 
 
     circuit.reset();
