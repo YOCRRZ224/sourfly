@@ -392,3 +392,108 @@ footer {
         display: flex;
     }
 }
+.neuron {
+    cursor: pointer;
+}
+
+.neuron:hover {
+    filter: brightness(1.15);
+}
+
+.neuron.inspected {
+    outline: 1px solid rgba(91, 192, 255, 0.7);
+    outline-offset: 3px;
+}
+
+.neuron-inspector {
+    position: relative;
+    padding: 16px;
+    border: 1px solid #343d46;
+    background: #101419;
+}
+
+.neuron-inspector.hidden {
+    display: none;
+}
+
+.inspector-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.inspector-kicker {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    opacity: 0.55;
+}
+
+.inspector-name {
+    margin-top: 4px;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.inspector-close {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 22px;
+    cursor: pointer;
+}
+
+.inspector-meta {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #272d34;
+    font-size: 11px;
+}
+
+.inspector-section {
+    margin-top: 16px;
+}
+
+.inspector-section-title {
+    margin-bottom: 7px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    opacity: 0.5;
+}
+
+.inspector-connection {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid #20252b;
+}
+
+.connection-main {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.connection-direction {
+    opacity: 0.45;
+}
+
+.connection-neuron {
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.connection-data {
+    display: flex;
+    gap: 10px;
+    font-family: monospace;
+    font-size: 10px;
+    opacity: 0.6;
+}
+
+.empty-connection {
+    font-size: 11px;
+    opacity: 0.4;
+}

@@ -32,8 +32,28 @@ const statusText = document.getElementById("statusText");
 
 const currentSeedLabel = document.getElementById("currentSeed");
 
-const networkState = document.getElementById("networkState");
+const networkState = document.getElementById("networkState");const neuronInspector =
+    document.getElementById("neuronInspector");
 
+const inspectorName =
+    document.getElementById("inspectorName");
+
+const inspectorLayer =
+    document.getElementById("inspectorLayer");
+
+const inspectorActivity =
+    document.getElementById("inspectorActivity");
+
+const inspectorIncoming =
+    document.getElementById("inspectorIncoming");
+
+const inspectorOutgoing =
+    document.getElementById("inspectorOutgoing");
+
+const closeInspector =
+    document.getElementById("closeInspector");
+
+let inspectedNeuron = null;
 
 const VISUAL = [
     "LTe42b",
@@ -2012,7 +2032,208 @@ const seedInput =
         "seedInput"
     );
 
+const neuronLayer = {};
 
+for (const neuron of VISUAL) {
+    neuronLayer[neuron] = "VISUAL";
+}
+
+for (const neuron of CENTRAL) {
+    neuronLayer[neuron] = "CENTRAL";
+}
+
+for (const neuron of DESCENDING) {
+    neuronLayer[neuron] = "DESCENDING";
+}
+function getNeuronConnections(neuron) {
+    const incoming = [];
+    const outgoing = [];
+
+    for (const [
+        visual,
+        central,
+        descending,
+        weightVisual,
+        weightCentral
+    ] of PATHWAYS) {
+
+        if (central === neuron) {
+            incoming.push({
+                neuron: visual,
+                weight: weightVisual,
+                type: "visual"
+            });
+
+            outgoing.push({
+                neuron: descending,
+                weight: weightCentral,
+                type: "descending"
+            });
+        }
+
+        if (visual === neuron) {
+            outgoing.push({
+                neuron: central,
+                weight: weightVisual,
+                type: "central"
+            });
+        }
+
+        if (descending === neuron) {
+            incoming.push({
+                neuron: central,
+                weight: weightCentral,
+                type: "central"
+            });
+        }
+    }
+
+    return {
+        incoming,
+        outgoing
+    };
+}
+closeInspector.addEventListener(
+    "click",
+    () => {
+        inspectedNeuron = null;
+
+        neuronInspector.classList.add(
+            "hidden"
+        );
+
+        document
+            .querySelectorAll(
+                ".neuron.inspected"
+            )
+            .forEach(element => {
+                element.classList.remove(
+                    "inspected"
+                );
+            });
+    }
+);
+function inspectNeuron(neuron) {
+    inspectedNeuron = neuron;
+
+    neuronInspector.classList.remove("hidden");
+
+    inspectorName.textContent =
+        neuron;
+
+    inspectorLayer.textContent =
+        neuronLayer[neuron] || "UNKNOWN";
+
+    updateNeuronInspector();
+
+    document
+        .querySelectorAll(".neuron.inspected")
+        .forEach(element => {
+            element.classList.remove("inspected");
+        });
+
+    const selected =
+        document.querySelector(
+            `.neuron[data-neuron="${CSS.escape(neuron)}"]`
+        );
+
+    if (selected) {
+        selected.classList.add("inspected");
+    }
+}
+function updateNeuronInspector() {
+    if (!inspectedNeuron) {
+        return;
+    }
+
+    const layer =
+        neuronLayer[inspectedNeuron];
+
+    const activity =
+        circuit[layer.toLowerCase()]?.[inspectedNeuron] ?? 0;
+
+    inspectorActivity.textContent =
+        activity.toFixed(3);
+
+    const connections =
+        getNeuronConnections(inspectedNeuron);
+
+    inspectorIncoming.innerHTML =
+        connections.incoming.length
+            ? connections.incoming
+                .map(connection =>
+                    createConnectionHTML(
+                        connection,
+                        true
+                    )
+                )
+                .join("")
+            : `<div class="empty-connection">
+                    NONE
+               </div>`;
+
+    inspectorOutgoing.innerHTML =
+        connections.outgoing.length
+            ? connections.outgoing
+                .map(connection =>
+                    createConnectionHTML(
+                        connection,
+                        false
+                    )
+                )
+                .join("")
+            : `<div class="empty-connection">
+                    NONE
+               </div>`;
+}
+function createConnectionHTML(
+    connection,
+    incoming
+) {
+    const neuron =
+        connection.neuron;
+
+    const layer =
+        neuronLayer[neuron];
+
+    const group =
+        circuit[layer.toLowerCase()];
+
+    const activity =
+        group?.[neuron] ?? 0;
+
+    const normalizedWeight =
+        connection.weight > 1
+            ? connection.weight / 542
+            : connection.weight;
+
+    const signal =
+        activity * normalizedWeight;
+
+    return `
+        <div class="inspector-connection">
+            <div class="connection-main">
+                <span class="connection-direction">
+                    ${incoming ? "←" : "→"}
+                </span>
+
+                <span class="connection-neuron">
+                    ${neuron}
+                </span>
+            </div>
+
+            <div class="connection-data">
+                <span>
+                    W ${normalizedWeight.toFixed(3)}
+                </span>
+
+                <span>
+                    S ${signal.toFixed(3)}
+                </span>
+            </div>
+        </div>
+    `;
+}
 function createActivityBars(
     containerId,
     neurons
@@ -2038,9 +2259,11 @@ function createActivityBars(
             );
 
 
-        element.className =
-            "neuron";
-
+        element.className = "neuron";
+        element.dataset.neuron = neuron;
+        element.addEventListener("click", () => {
+                inspectNeuron(neuron);
+        });
 
         element.innerHTML = `
 
@@ -2461,6 +2684,9 @@ function updateSimulation() {
     updateMetrics(
         result.action
     );
+    if (inspectedNeuron) {
+    updateNeuronInspector();
+    }
 }
 
 
