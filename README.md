@@ -6,7 +6,7 @@ The fly receives local visual signals, passes them through visual, central, and 
 
 ## Explore
 
-- Food seeking
+- Food seeking.
 - Obstacle avoidance
 - Competing stimuli
 - Seeded random mazes
