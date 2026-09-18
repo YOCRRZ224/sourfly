@@ -122,5 +122,11 @@ const PATHWAYS = [
     ["vCal1", "PLP248", "DNa10", 189, 78]
 ];
 ```
+## Known bugs
+there are these known bugs in the code
+
+bug 1: The wall thrashing and thing
+bug 2: DUMB AS HELL
+bug 3: Fly stopping and collision distance increasing
 
 - i will connect a VPS for the orignal and live dataset its expensive so theres less chance i can do it :(
