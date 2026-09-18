@@ -129,4 +129,7 @@ bug 1: The wall thrashing and thing
 bug 2: DUMB AS HELL
 bug 3: Fly stopping and collision distance increasing
 
+## Roadmap
+- Real time fly brain diagram in 3D showing currently processing neural networks.
+
 - i will connect a VPS for the orignal and live dataset its expensive so theres less chance i can do it :(
