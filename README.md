@@ -133,3 +133,5 @@ bug 3: Fly stopping and collision distance increasing
 - Real time fly brain diagram in 3D showing currently processing neural networks.
 
 - i will connect a VPS for the orignal and live dataset its expensive so theres less chance i can do it :(
+
+## AND YES COPILOT DIDNT DO ANYTHING MAJOR I MISTAKENLY THOUGHT WHAT DOES THIS BUTTON DO AND THIS HAPPEND, EVERYTHING IS WRITTEN BY US
