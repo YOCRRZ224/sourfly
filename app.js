@@ -1563,107 +1563,246 @@ class World {
 
 
     move(motor) {
+    const maxTurn = 0.16;
+    const maxSpeed = 0.62;
 
-        const oldX =
-            this.fly.x;
+    const turn = Math.max(
+        -1,
+        Math.min(1, motor.turn)
+    );
 
+    const speed = Math.max(
+        0,
+        Math.min(1, motor.speed)
+    );
 
-        const oldY =
-            this.fly.y;
+    // Steering
+    this.fly.angle += turn * maxTurn;
 
+    // Intended movement
+    const dx =
+        Math.cos(this.fly.angle) *
+        maxSpeed *
+        speed;
 
-        const maxTurn =
-            0.16;
+    const dy =
+        Math.sin(this.fly.angle) *
+        maxSpeed *
+        speed;
 
+    const oldX = this.fly.x;
+    const oldY = this.fly.y;
 
-        const maxSpeed =
-            0.62;
+    // Try to move
+    let nextX = oldX + dx;
+    let nextY = oldY + dy;
 
+    // Resolve collisions before committing movement
+    const result = this.resolveMovement(
+        oldX,
+        oldY,
+        nextX,
+        nextY
+    );
 
-        const turn =
-            Math.max(
-                -1,
-                Math.min(
-                    1,
-                    motor.turn
-                )
+    this.fly.x = result.x;
+    this.fly.y = result.y;
+
+    // If we hit something, steer along the surface
+    if (result.collided) {
+        const tangentX = -result.normalY;
+        const tangentY = result.normalX;
+
+        // Project desired movement onto wall tangent
+        const tangentAmount =
+            dx * tangentX +
+            dy * tangentY;
+
+        if (Math.abs(tangentAmount) > 0.0001) {
+            this.fly.angle = Math.atan2(
+                tangentY * Math.sign(tangentAmount),
+                tangentX * Math.sign(tangentAmount)
             );
-
-
-        const speed =
-            Math.max(
-                0,
-                Math.min(
-                    1,
-                    motor.speed
-                )
-            );
-
-
-        /*
-         * Continuous steering
-         */
-
-        this.fly.angle +=
-            turn *
-            maxTurn;
-
-
-        /*
-         * Continuous forward movement
-         */
-
-        this.fly.x +=
-            Math.cos(
-                this.fly.angle
-            ) *
-            maxSpeed *
-            speed;
-
-
-        this.fly.y +=
-            Math.sin(
-                this.fly.angle
-            ) *
-            maxSpeed *
-            speed;
-
-
-        /*
-         * Keep fly inside world.
-         */
-
-        this.fly.x =
-            Math.max(
-                2,
-                Math.min(
-                    this.width - 2,
-                    this.fly.x
-                )
-            );
-
-
-        this.fly.y =
-            Math.max(
-                2,
-                Math.min(
-                    this.height - 2,
-                    this.fly.y
-                )
-            );
-
-
-        this.distance +=
-            Math.hypot(
-                this.fly.x - oldX,
-                this.fly.y - oldY
-            );
-
-
-        this.checkCollisions();
-
-        this.checkFood();
+        }
     }
+
+    // Distance is now measured AFTER collision resolution.
+    this.distance += Math.hypot(
+        this.fly.x - oldX,
+        this.fly.y - oldY
+    );
+
+    this.checkFood();
+}
+    resolveMovement(oldX, oldY, nextX, nextY) {
+    const r = 1.5;
+
+    let x = nextX;
+    let y = nextY;
+
+    let collided = false;
+    let normalX = 0;
+    let normalY = 0;
+
+    /*
+     * ---------------------------------------------------------
+     * World boundaries
+     * ---------------------------------------------------------
+     */
+
+    const minX = 2 + r;
+    const maxX = this.width - 2 - r;
+    const minY = 2 + r;
+    const maxY = this.height - 2 - r;
+
+    if (x < minX) {
+        x = minX;
+        normalX = 1;
+        normalY = 0;
+        collided = true;
+    } else if (x > maxX) {
+        x = maxX;
+        normalX = -1;
+        normalY = 0;
+        collided = true;
+    }
+
+    if (y < minY) {
+        y = minY;
+        normalX = 0;
+        normalY = 1;
+        collided = true;
+    } else if (y > maxY) {
+        y = maxY;
+        normalX = 0;
+        normalY = -1;
+        collided = true;
+    }
+
+    /*
+     * ---------------------------------------------------------
+     * Obstacles
+     * ---------------------------------------------------------
+     */
+
+    for (const obstacle of this.obstacles) {
+        const closestX = Math.max(
+            obstacle.x,
+            Math.min(x, obstacle.x + obstacle.w)
+        );
+
+        const closestY = Math.max(
+            obstacle.y,
+            Math.min(y, obstacle.y + obstacle.h)
+        );
+
+        let dx = x - closestX;
+        let dy = y - closestY;
+
+        const distanceSq =
+            dx * dx +
+            dy * dy;
+
+        // No collision
+        if (distanceSq > r * r) {
+            continue;
+        }
+
+        collided = true;
+        this.collisions++;
+
+        /*
+         * -----------------------------------------------------
+         * Normal case: fly is outside rectangle and overlaps it
+         * -----------------------------------------------------
+         */
+
+        if (distanceSq > 0.000001) {
+            const distance = Math.sqrt(distanceSq);
+
+            normalX = dx / distance;
+            normalY = dy / distance;
+
+            const penetration = r - distance;
+
+            x += normalX * penetration;
+            y += normalY * penetration;
+        }
+
+        /*
+         * -----------------------------------------------------
+         * Special case: center is inside the rectangle.
+         *
+         * Choose the closest edge and push the fly outside it.
+         * -----------------------------------------------------
+         */
+
+        else {
+            const left =
+                x - obstacle.x;
+
+            const right =
+                obstacle.x + obstacle.w - x;
+
+            const top =
+                y - obstacle.y;
+
+            const bottom =
+                obstacle.y + obstacle.h - y;
+
+            const minPenetration = Math.min(
+                left,
+                right,
+                top,
+                bottom
+            );
+
+            if (minPenetration === left) {
+                x = obstacle.x - r;
+                normalX = -1;
+                normalY = 0;
+            } else if (minPenetration === right) {
+                x = obstacle.x + obstacle.w + r;
+                normalX = 1;
+                normalY = 0;
+            } else if (minPenetration === top) {
+                y = obstacle.y - r;
+                normalX = 0;
+                normalY = -1;
+            } else {
+                y = obstacle.y + obstacle.h + r;
+                normalX = 0;
+                normalY = 1;
+            }
+        }
+
+        /*
+         * Keep the fly inside the world after resolving
+         * the obstacle.
+         */
+
+        x = Math.max(
+            minX,
+            Math.min(maxX, x)
+        );
+
+        y = Math.max(
+            minY,
+            Math.min(maxY, y)
+        );
+
+        // Only resolve one obstacle this step.
+        break;
+    }
+
+    return {
+        x,
+        y,
+        collided,
+        normalX,
+        normalY
+    };
+}
 
 
     checkCollisions() {
@@ -1701,18 +1840,6 @@ class World {
                 this.collisions++;
 
 
-                this.fly.x -=
-                    Math.cos(
-                        this.fly.angle
-                    ) *
-                    2;
-
-
-                this.fly.y -=
-                    Math.sin(
-                        this.fly.angle
-                    ) *
-                    2;
 
 
                 const centerY =
@@ -1724,13 +1851,11 @@ class World {
                     this.fly.y < centerY
                 ) {
 
-                    this.fly.angle -=
-                        0.45;
+                    
 
                 } else {
 
-                    this.fly.angle +=
-                        0.45;
+                
                 }
 
 
