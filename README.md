@@ -136,23 +136,23 @@ bug 3: Fly stopping and collision distance increasing
 ## bug fixing roadmap
 
 - [1] FIX PHYSICS
-        ↓
+        
 - [2] EXTRACT CONNECTOME DATA
-        ↓
+        
 - [3] PYTHON CONNECTOME ENGINE
-        ↓
+        
 - [4] WEBSOCKET PROTOCOL
-        ↓
+        
 - [5] REPLACE JS NeuralCircuit
-        ↓
+        
 - [6] REAL NEURON INSPECTOR
-        ↓
+        
 - [7] THREE.JS 3D FLY BRAIN
-        ↓
+        
 - [8] ACTIVE PATH VISUALIZATION
-        ↓
+        
 - [9] LESION REAL NEURONS
-        ↓
+        
 - [10] COMPARE BEHAVIOR
 
 ## AND YES COPILOT DIDNT DO ANYTHING MAJOR I MISTAKENLY THOUGHT WHAT DOES THIS BUTTON DO AND THIS HAPPEND, EVERYTHING IS WRITTEN BY US
