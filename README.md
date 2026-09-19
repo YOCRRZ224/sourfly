@@ -15,17 +15,8 @@ The fly receives local visual signals, passes them through visual, central, and 
 - Lesion mode for selected central neurons
 - Position, time, distance, collisions, and food-reached metrics
 
-## Run locally
-
-No build step or dependencies are required.
-
-Open `index.html` in a browser, or serve the folder locally:
-
-```sh
-python3 -m http.server
-```
-
-Then visit `http://localhost:8000`.
+## Try it
+Visit - https://sourfly.yocrrz.is-a.dev
 
 ## Files
 
@@ -122,6 +113,10 @@ const PATHWAYS = [
     ["vCal1", "PLP248", "DNa10", 189, 78]
 ];
 ```
+## Done
+- tick speed
+- seed system
+
 ## Known bugs
 there are these known bugs in the code
 
