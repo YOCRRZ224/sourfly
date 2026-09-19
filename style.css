@@ -497,3 +497,109 @@ footer {
     font-size: 11px;
     opacity: 0.4;
 }
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.control-group > label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #8b8f98;
+    letter-spacing: 0.02em;
+}
+
+.tick-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Tick input */
+#tickInput {
+    width: 82px;
+    height: 36px;
+    padding: 0 10px;
+
+    border: 1px solid #2b2f36;
+    border-radius: 8px;
+
+    background: #15171b;
+    color: #f1f3f5;
+
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+
+    outline: none;
+    transition:
+        border-color 0.15s ease,
+        background 0.15s ease,
+        box-shadow 0.15s ease;
+}
+
+#tickInput:hover {
+    background: #191c21;
+    border-color: #383d46;
+}
+
+#tickInput:focus {
+    border-color: #5b9cff;
+    box-shadow: 0 0 0 3px rgba(91, 156, 255, 0.12);
+}
+
+/* Remove number input arrows */
+#tickInput::-webkit-inner-spin-button,
+#tickInput::-webkit-outer-spin-button {
+    margin: 0;
+    opacity: 0.5;
+}
+
+/* ms label */
+.tick-controls > span {
+    color: #777c86;
+    font-size: 0.82rem;
+    user-select: none;
+}
+
+/* Reset button */
+#resetTickBtn {
+    height: 36px;
+    padding: 0 13px;
+
+    border: 1px solid #2b2f36;
+    border-radius: 8px;
+
+    background: #1b1e23;
+    color: #c9cdd4;
+
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease,
+        transform 0.1s ease;
+}
+
+#resetTickBtn:hover {
+    background: #242830;
+    border-color: #3a404a;
+    color: #ffffff;
+}
+
+#resetTickBtn:active {
+    transform: translateY(1px);
+    background: #17191d;
+}
+
+#resetTickBtn:focus-visible {
+    outline: none;
+    border-color: #5b9cff;
+    box-shadow: 0 0 0 3px rgba(91, 156, 255, 0.12);
+}

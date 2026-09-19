@@ -52,7 +52,14 @@ const inspectorOutgoing =
 
 const closeInspector =
     document.getElementById("closeInspector");
+const DEFAULT_TICK_MS = 50;
 
+let tickMs = DEFAULT_TICK_MS;
+const tickInput =
+    document.getElementById("tickInput");
+
+const resetTickBtn =
+    document.getElementById("resetTickBtn");
 let inspectedNeuron = null;
 
 const VISUAL = [
@@ -3132,7 +3139,7 @@ function simulationLoop() {
 
     setTimeout(
         simulationLoop,
-        50
+        tickMs
     );
 }
 
@@ -3283,7 +3290,32 @@ window.addEventListener(
     resizeCanvas
 );
 
+tickInput.addEventListener(
+    "change",
+    () => {
+        const value =
+            Number(tickInput.value);
 
+        if (!Number.isFinite(value)) {
+            tickInput.value = tickMs;
+            return;
+        }
+
+        tickMs = Math.max(
+            1,
+            Math.min(1000, Math.round(value))
+        );
+
+        tickInput.value = tickMs;
+    }
+);
+resetTickBtn.addEventListener(
+    "click",
+    () => {
+        tickMs = DEFAULT_TICK_MS;
+        tickInput.value = DEFAULT_TICK_MS;
+    }
+);
 resizeCanvas();
 
 
